@@ -1,6 +1,8 @@
 import math
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,7 +20,14 @@ from database.db import (
 from data.ingestion import fetch_ohlcv, fetch_fundamentals
 from analysis.technical import run_full_analysis, generate_signals
 
-app = FastAPI(title="Stock Analysis API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Stock Analysis API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,11 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 
 @app.get("/health")
@@ -58,6 +62,26 @@ def _col(df, col):
     return [_clean(v) for v in df[col].tolist()]
 
 
+def _build_signal_from_cache(price_rows, ind_map) -> dict:
+    """Reconstruct a minimal DataFrame from cached ORM rows and compute signal."""
+    def pick(date_str, field):
+        row = ind_map.get(date_str)
+        return _clean(getattr(row, field, None)) if row else None
+
+    cached_df = pd.DataFrame({
+        "date":        [r.date for r in price_rows],
+        "close":       [r.close for r in price_rows],
+        "rsi":         [pick(str(r.date), "rsi")         for r in price_rows],
+        "macd":        [pick(str(r.date), "macd")        for r in price_rows],
+        "macd_signal": [pick(str(r.date), "macd_signal") for r in price_rows],
+        "macd_hist":   [pick(str(r.date), "macd_hist")   for r in price_rows],
+        "bb_upper":    [pick(str(r.date), "bb_upper")    for r in price_rows],
+        "bb_middle":   [pick(str(r.date), "bb_middle")   for r in price_rows],
+        "bb_lower":    [pick(str(r.date), "bb_lower")    for r in price_rows],
+    })
+    return generate_signals(cached_df)
+
+
 @app.get("/stock/{ticker}")
 def get_stock(ticker: str):
     ticker = ticker.upper().strip()
@@ -66,11 +90,7 @@ def get_stock(ticker: str):
         fresh = is_cache_fresh(ticker, db)
 
         if fresh:
-            # Serve from cache
             price_rows = get_cached_prices(ticker, db)
-            company_row = get_cached_company(ticker, db)
-            ind_rows = get_cached_indicators(ticker, db)
-
             if not price_rows:
                 fresh = False
 
@@ -84,7 +104,6 @@ def get_stock(ticker: str):
                 )
 
             fundamentals = fetch_fundamentals(ticker)
-
             df = run_full_analysis(df)
             signal = generate_signals(df)
 
@@ -98,14 +117,13 @@ def get_stock(ticker: str):
             ind_dicts = df[[c for c in ind_cols if c in df.columns]].to_dict("records")
             upsert_indicators(ticker, ind_dicts, db)
 
-            # Build response directly from live df
             dates = [str(d) for d in df["date"].tolist()]
             return {
                 "ticker": ticker,
                 "last_updated": datetime.now(timezone.utc).isoformat(),
                 "company": fundamentals,
                 "prices": {
-                    "dates": dates,
+                    "dates":  dates,
                     "open":   _col(df, "open"),
                     "high":   _col(df, "high"),
                     "low":    _col(df, "low"),
@@ -128,47 +146,36 @@ def get_stock(ticker: str):
                 "signal": signal,
             }
 
-        # Assemble response from cached rows
-        dates   = [str(r.date) for r in price_rows]
+        # Serve from cache
+        company_row = get_cached_company(ticker, db)
+        ind_rows = get_cached_indicators(ticker, db)
+
+        dates = [str(r.date) for r in price_rows]
+        ind_map = {str(r.date): r for r in ind_rows}
+
         company = {}
         if company_row:
             company = {
-                "name": company_row.name,
-                "sector": company_row.sector,
-                "industry": company_row.industry,
-                "market_cap": company_row.market_cap,
-                "pe_ratio": company_row.pe_ratio,
-                "eps": company_row.eps,
-                "beta": company_row.beta,
+                "name":           company_row.name,
+                "sector":         company_row.sector,
+                "industry":       company_row.industry,
+                "market_cap":     company_row.market_cap,
+                "pe_ratio":       company_row.pe_ratio,
+                "eps":            company_row.eps,
+                "beta":           company_row.beta,
                 "dividend_yield": company_row.dividend_yield,
-                "description": company_row.description,
-                "website": company_row.website,
-                "employees": company_row.employees,
-                "current_price": company_row.current_price,
-                "week_52_high": company_row.week_52_high,
-                "week_52_low": company_row.week_52_low,
+                "description":    company_row.description,
+                "website":        company_row.website,
+                "employees":      company_row.employees,
+                "current_price":  company_row.current_price,
+                "week_52_high":   company_row.week_52_high,
+                "week_52_low":    company_row.week_52_low,
             }
-
-        ind_map = {str(r.date): r for r in ind_rows}
 
         def ind_col(field):
             return [_clean(getattr(ind_map.get(d), field, None)) for d in dates]
 
-        # Rebuild a minimal df to regenerate signal from cached indicators
-        import pandas as pd
-        cached_df_data = {
-            "date":       [r.date for r in price_rows],
-            "close":      [r.close for r in price_rows],
-            "rsi":        [_clean(ind_map.get(str(r.date), type("x", (), {"rsi": None})()).rsi) if str(r.date) in ind_map else None for r in price_rows],
-            "macd":       [_clean(ind_map.get(str(r.date), type("x", (), {"macd": None})()).macd) if str(r.date) in ind_map else None for r in price_rows],
-            "macd_signal":[_clean(ind_map.get(str(r.date), type("x", (), {"macd_signal": None})()).macd_signal) if str(r.date) in ind_map else None for r in price_rows],
-            "macd_hist":  [_clean(ind_map.get(str(r.date), type("x", (), {"macd_hist": None})()).macd_hist) if str(r.date) in ind_map else None for r in price_rows],
-            "bb_upper":   [_clean(ind_map.get(str(r.date), type("x", (), {"bb_upper": None})()).bb_upper) if str(r.date) in ind_map else None for r in price_rows],
-            "bb_middle":  [_clean(ind_map.get(str(r.date), type("x", (), {"bb_middle": None})()).bb_middle) if str(r.date) in ind_map else None for r in price_rows],
-            "bb_lower":   [_clean(ind_map.get(str(r.date), type("x", (), {"bb_lower": None})()).bb_lower) if str(r.date) in ind_map else None for r in price_rows],
-        }
-        cached_df = pd.DataFrame(cached_df_data)
-        signal = generate_signals(cached_df)
+        signal = _build_signal_from_cache(price_rows, ind_map)
 
         return {
             "ticker": ticker,
