@@ -45,22 +45,59 @@ def _v7_quote(ticker: str, sess: requests.Session) -> dict:
 
 
 def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
-    """Download OHLCV history. Returns empty DataFrame on failure."""
+    """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY."""
+    import os
+    from datetime import datetime, timedelta
+
+    api_key    = os.environ.get("ALPACA_API_KEY")
+    secret_key = os.environ.get("ALPACA_SECRET_KEY")
+    if not api_key or not secret_key:
+        return pd.DataFrame()
+
     try:
-        df = yf.Ticker(ticker).history(
-            period=period, interval=interval, auto_adjust=True
-        )
-        if df.empty:
+        end   = datetime.utcnow()
+        start = end - timedelta(days=180)
+
+        all_bars = []
+        page_token = None
+
+        while True:
+            params = {
+                "timeframe":  "1Day",
+                "start":      start.strftime("%Y-%m-%dT00:00:00Z"),
+                "end":        end.strftime("%Y-%m-%dT00:00:00Z"),
+                "adjustment": "all",
+                "limit":      1000,
+            }
+            if page_token:
+                params["page_token"] = page_token
+
+            r = requests.get(
+                f"https://data.alpaca.markets/v2/stocks/{ticker}/bars",
+                headers={
+                    "APCA-API-KEY-ID":     api_key,
+                    "APCA-API-SECRET-KEY": secret_key,
+                },
+                params=params,
+                timeout=15,
+            )
+            data = r.json()
+            bars = data.get("bars") or []
+            all_bars.extend(bars)
+            page_token = data.get("next_page_token")
+            if not page_token:
+                break
+
+        if not all_bars:
             return pd.DataFrame()
-        df = df.rename(columns={
-            "Open": "open", "High": "high", "Low": "low",
-            "Close": "close", "Volume": "volume",
-        })[["open", "high", "low", "close", "volume"]]
-        df.index = pd.to_datetime(df.index).normalize()
-        df.index.name = "date"
-        df = df.reset_index()
+
+        df = pd.DataFrame(all_bars).rename(columns={
+            "t": "date", "o": "open", "h": "high",
+            "l": "low",  "c": "close", "v": "volume",
+        })[["date", "open", "high", "low", "close", "volume"]]
         df["date"] = pd.to_datetime(df["date"]).dt.date
-        return df
+        return df.sort_values("date").reset_index(drop=True)
+
     except Exception:
         return pd.DataFrame()
 
