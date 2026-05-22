@@ -29,6 +29,56 @@ def _v7_quote(ticker: str) -> dict:
         return {}
 
 
+def _quotesummary_modules(ticker: str) -> dict:
+    """Tier-4 fallback: fetch a crumb then call quoteSummary with
+    summaryDetail + defaultKeyStatistics modules. These contain trailingPE,
+    trailingEps, beta, and dividendYield. Returns a flat dict of raw values."""
+    _UA = (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/124.0.0.0 Safari/537.36'
+    )
+    try:
+        # Step 1 — obtain a fresh crumb (query2 tends to be less aggressive)
+        crumb_r = requests.get(
+            'https://query2.finance.yahoo.com/v1/test/getcrumb',
+            headers={'User-Agent': _UA},
+            timeout=6,
+        )
+        crumb = crumb_r.text.strip()
+        # Yahoo returns "Too+Many+Requests" or empty string when blocking
+        if not crumb or '+' in crumb or len(crumb) > 24:
+            return {}
+
+        # Step 2 — quoteSummary with the modules that hold the missing fields
+        r = requests.get(
+            f'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}',
+            params={
+                'modules': 'summaryDetail,defaultKeyStatistics',
+                'crumb':   crumb,
+            },
+            headers={'User-Agent': _UA},
+            timeout=10,
+        )
+        results = r.json().get('quoteSummary', {}).get('result') or []
+        if not results:
+            return {}
+
+        # Flatten: quoteSummary wraps every value as {"raw": x, "fmt": "…"}
+        out = {}
+        for module_dict in results[0].values():
+            if not isinstance(module_dict, dict):
+                continue
+            for k, v in module_dict.items():
+                if isinstance(v, dict) and 'raw' in v:
+                    out[k] = v['raw']
+                elif not isinstance(v, (dict, list)):
+                    out[k] = v
+        return out
+    except Exception:
+        return {}
+
+
 def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
     """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY."""
     import os
@@ -88,10 +138,11 @@ def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.Da
 
 
 def fetch_fundamentals(ticker: str) -> dict:
-    """Three-tier fundamentals fetch:
-    1. fast_info  — always available; provides price, market cap, 52-week range
-    2. .info      — quoteSummary endpoint, may be blocked on cloud IPs
-    3. v7/quote   — alternate REST endpoint, fallback when .info returns empty
+    """Four-tier fundamentals fetch:
+    1. fast_info        — chart endpoint, always available; price/mktcap/52W
+    2. .info            — quoteSummary via yfinance (curl_cffi); full data when accessible
+    3. v7/quote         — alternate REST endpoint; fallback when .info is empty
+    4. quoteSummary     — crumb-based direct call for PE/EPS/beta/dividend only
     """
     yft = yf.Ticker(ticker)
 
@@ -104,7 +155,7 @@ def fetch_fundamentals(ticker: str) -> dict:
         except Exception:
             fi[key] = None
 
-    # ── Tier 2: .info (quoteSummary — may be empty on cloud IPs) ──────────
+    # ── Tier 2: .info (quoteSummary via yfinance curl_cffi session) ────────
     info = {}
     try:
         raw = yft.info or {}
@@ -124,6 +175,15 @@ def fetch_fundamentals(ticker: str) -> dict:
                 return v
         return None
 
+    # ── Tier 4: crumb-based quoteSummary — only for the four fields that
+    #    tiers 1-3 cannot supply reliably from cloud IPs ────────────────────
+    need_t4 = (
+        pick(("trailingPE",  info), ("trailingPE",  quote)) is None or
+        pick(("trailingEps", info), ("epsTrailingTwelveMonths", quote)) is None or
+        pick(("beta",        info), ("beta",         quote)) is None
+    )
+    qs = _quotesummary_modules(ticker) if need_t4 else {}
+
     name = (
         info.get("longName") or info.get("shortName") or
         quote.get("longName") or quote.get("shortName")
@@ -141,15 +201,22 @@ def fetch_fundamentals(ticker: str) -> dict:
         "pe_ratio":       pick(
             ("trailingPE", info),
             ("trailingPE", quote),
+            ("trailingPE", qs),
         ),
         "eps":            pick(
             ("trailingEps",               info),
             ("epsTrailingTwelveMonths",   quote),
+            ("trailingEps",               qs),
         ),
-        "beta":           pick(("beta", info), ("beta", quote)),
+        "beta":           pick(
+            ("beta", info),
+            ("beta", quote),
+            ("beta", qs),
+        ),
         "dividend_yield": pick(
             ("dividendYield",                info),
             ("trailingAnnualDividendYield",  quote),
+            ("dividendYield",                qs),
         ),
         "description":    info.get("longBusinessSummary"),
         "website":        info.get("website"),
