@@ -9,18 +9,18 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0d1117;
-      --card:      #161b22;
-      --border:    #30363d;
-      --text:      #e6edf3;
-      --muted:     #8b949e;
-      --green:     #3fb950;
-      --red:       #f85149;
-      --yellow:    #d29922;
-      --blue:      #58a6ff;
-      --purple:    #bc8cff;
-      --orange:    #f0883e;
-      --accent:    #1f6feb;
+      --bg:      #0d1117;
+      --card:    #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --green:   #3fb950;
+      --red:     #f85149;
+      --yellow:  #d29922;
+      --blue:    #58a6ff;
+      --purple:  #bc8cff;
+      --orange:  #f0883e;
+      --accent:  #1f6feb;
     }
 
     body {
@@ -31,7 +31,7 @@
       min-height: 100vh;
     }
 
-    /* ── Header ─────────────────────────────── */
+    /* ── Header ──────────────────────────────────── */
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
@@ -41,186 +41,140 @@
       gap: 20px;
       flex-wrap: wrap;
     }
-    header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: var(--text);
-      white-space: nowrap;
-    }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; }
     header h1 span { color: var(--blue); }
 
-    .search-row {
-      display: flex;
-      gap: 8px;
-      flex: 1;
-      min-width: 260px;
-    }
+    .search-row { display: flex; gap: 8px; flex: 1; min-width: 260px; }
     #ticker-input {
-      flex: 1;
-      max-width: 200px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 8px 12px;
-      font-size: 14px;
-      font-family: 'Courier New', monospace;
-      font-weight: 700;
-      text-transform: uppercase;
-      outline: none;
-      transition: border-color .2s;
+      flex: 1; max-width: 200px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 8px 12px; font-size: 14px;
+      font-family: 'Courier New', monospace; font-weight: 700;
+      text-transform: uppercase; outline: none; transition: border-color .2s;
     }
     #ticker-input:focus { border-color: var(--accent); }
     #ticker-input::placeholder { font-weight: 400; text-transform: none; color: var(--muted); }
 
     .quick-tickers { display: flex; gap: 6px; flex-wrap: wrap; }
     .quick-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--muted);
-      padding: 4px 10px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all .15s;
+      background: transparent; border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all .15s;
     }
     .quick-btn:hover { border-color: var(--blue); color: var(--blue); }
 
     #analyze-btn {
-      background: var(--accent);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      padding: 8px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .2s;
-      white-space: nowrap;
+      background: var(--accent); border: none; border-radius: 6px;
+      color: #fff; padding: 8px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background .2s; white-space: nowrap;
     }
     #analyze-btn:hover { background: #388bfd; }
     #analyze-btn:disabled { background: var(--border); cursor: not-allowed; }
 
-    /* ── Error banner ─────────────────────────── */
+    /* ── Error / Spinner ─────────────────────────── */
     #error-banner {
       display: none;
-      background: rgba(248,81,73,.12);
-      border: 1px solid var(--red);
-      border-radius: 6px;
-      color: var(--red);
-      margin: 16px 24px 0;
-      padding: 10px 14px;
-      font-size: 13px;
+      background: rgba(248,81,73,.12); border: 1px solid var(--red);
+      border-radius: 6px; color: var(--red);
+      margin: 16px 24px 0; padding: 10px 14px; font-size: 13px;
     }
-
-    /* ── Spinner ─────────────────────────────── */
     #spinner {
-      display: none;
-      justify-content: center;
-      align-items: center;
-      height: 200px;
-      gap: 12px;
-      color: var(--muted);
+      display: none; justify-content: center; align-items: center;
+      height: 200px; gap: 12px; color: var(--muted);
     }
     .spin {
       width: 28px; height: 28px;
-      border: 3px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
+      border: 3px solid var(--border); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Main content ────────────────────────── */
+    /* ── Layout ──────────────────────────────────── */
     #content { display: none; padding: 20px 24px; }
-
     .grid {
       display: grid;
       grid-template-columns: 300px 1fr;
       gap: 16px;
     }
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
-    /* ── Cards ─────────────────────────────── */
+    /* ── Cards ───────────────────────────────────── */
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
     }
     .card-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .8px;
-      color: var(--muted);
-      margin-bottom: 12px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted); margin-bottom: 12px;
     }
 
-    /* ── Company panel ─────────────────────── */
-    #company-name {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 2px;
-      line-height: 1.2;
-    }
-    #company-ticker {
-      font-size: 13px;
-      color: var(--blue);
-      font-family: monospace;
-      margin-bottom: 10px;
-    }
+    /* ── Company panel ───────────────────────────── */
+    #company-name { font-size: 18px; font-weight: 700; margin-bottom: 2px; line-height: 1.2; }
+    #company-ticker { font-size: 13px; color: var(--blue); font-family: monospace; margin-bottom: 10px; }
     .tag {
       display: inline-block;
-      background: rgba(88,166,255,.1);
-      border: 1px solid rgba(88,166,255,.25);
-      border-radius: 4px;
-      color: var(--blue);
-      font-size: 11px;
-      padding: 2px 7px;
-      margin: 0 4px 4px 0;
+      background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.25);
+      border-radius: 4px; color: var(--blue); font-size: 11px;
+      padding: 2px 7px; margin: 0 4px 4px 0;
     }
 
-    .metric-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 12px;
-    }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .metric {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 10px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px;
     }
     .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
     .metric-value { font-size: 15px; font-weight: 700; margin-top: 2px; }
 
-    #company-desc {
-      margin-top: 12px;
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.6;
-      display: -webkit-box;
-      -webkit-line-clamp: 5;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    /* ── Performance row ─────────────────────────── */
+    .perf-row {
+      display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .perf-pill {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 10px;
+      font-size: 12px; font-weight: 600; white-space: nowrap;
     }
 
-    /* ── Signal panel ─────────────────────── */
+    /* ── 52-week position bar ────────────────────── */
+    .week52-wrap { margin-top: 14px; }
+    .week52-label-top {
+      font-size: 10px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 6px;
+    }
+    .week52-track {
+      position: relative; height: 6px;
+      background: var(--border); border-radius: 3px; overflow: visible;
+    }
+    .week52-fill {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, var(--red) 0%, var(--yellow) 50%, var(--green) 100%);
+      transition: width .4s ease;
+    }
+    .week52-needle {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 12px; height: 12px;
+      background: var(--text); border: 2px solid var(--bg);
+      border-radius: 50%; transition: left .4s ease;
+      pointer-events: none;
+    }
+    .week52-labels {
+      display: flex; justify-content: space-between;
+      margin-top: 8px; font-size: 11px; color: var(--muted);
+    }
+    .week52-price-label { font-weight: 700; color: var(--text); }
+
+    /* ── Company description ─────────────────────── */
+    #company-desc {
+      margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6;
+      display: -webkit-box; -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── Signal panel ────────────────────────────── */
     #signal-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 64px;
-      border-radius: 8px;
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center;
+      height: 64px; border-radius: 8px;
+      font-size: 26px; font-weight: 800; letter-spacing: 2px; margin-bottom: 12px;
     }
     .signal-buy  { background: rgba(63,185,80,.15);  border: 2px solid var(--green);  color: var(--green);  }
     .signal-sell { background: rgba(248,81,73,.15);  border: 2px solid var(--red);    color: var(--red);    }
@@ -232,53 +186,65 @@
 
     .reasons-list { list-style: none; }
     .reasons-list li {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      font-size: 12px;
-      color: var(--muted);
-      padding: 4px 0;
-      border-bottom: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 12px; color: var(--muted);
+      padding: 4px 0; border-bottom: 1px solid var(--border);
     }
     .reasons-list li:last-child { border-bottom: none; }
     .reasons-list li::before { content: "›"; color: var(--blue); flex-shrink: 0; margin-top: 1px; }
 
     .comp-scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
     .comp-score {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px;
-      text-align: center;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px; text-align: center;
     }
     .comp-score .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .comp-score .val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+    .comp-score .val   { font-size: 16px; font-weight: 700; margin-top: 2px; }
 
-    /* ── Charts ───────────────────────────── */
+    /* ── News panel ──────────────────────────────── */
+    .news-item {
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 4px;
+    }
+    .news-source { font-size: 10px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: .5px; }
+    .news-date   { font-size: 10px; color: var(--muted); }
+    .news-link {
+      display: block; font-size: 12px; color: var(--text); line-height: 1.5;
+      text-decoration: none;
+    }
+    .news-link:hover { color: var(--blue); text-decoration: underline; }
+    #news-empty { font-size: 12px; color: var(--muted); padding: 8px 0; }
+
+    /* ── Charts ──────────────────────────────────── */
     .chart-section { display: flex; flex-direction: column; gap: 16px; }
-    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
-    .chart-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .chart-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted); margin-bottom: 6px;
+    }
 
-    /* ── Welcome state ───────────────────── */
+    /* ── Welcome ─────────────────────────────────── */
     #welcome {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 400px;
-      color: var(--muted);
-      text-align: center;
-      gap: 12px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 400px;
+      color: var(--muted); text-align: center; gap: 12px;
     }
     #welcome .icon { font-size: 48px; }
     #welcome h2 { font-size: 18px; color: var(--text); }
-    #welcome p { font-size: 13px; max-width: 360px; line-height: 1.6; }
+    #welcome p  { font-size: 13px; max-width: 360px; line-height: 1.6; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>📈 Stock <span>Analysis</span> Terminal</h1>
+  <h1>&#128200; Stock <span>Analysis</span> Terminal</h1>
   <div class="search-row">
     <input id="ticker-input" type="text" placeholder="Enter ticker (e.g. AAPL)" maxlength="10" />
     <button id="analyze-btn" onclick="analyze()">Analyze</button>
@@ -289,7 +255,7 @@
     <button class="quick-btn" onclick="quickTicker('GOOGL')">GOOGL</button>
     <button class="quick-btn" onclick="quickTicker('TSLA')">TSLA</button>
     <button class="quick-btn" onclick="quickTicker('NVDA')">NVDA</button>
-    <button class="quick-btn" onclick="quickTicker('SPY')">SPY</button>
+    <button class="quick-btn" onclick="quickTicker('DECK')">DECK</button>
   </div>
 </header>
 
@@ -297,7 +263,7 @@
 <div id="spinner"><div class="spin"></div><span id="spinner-text">Fetching data…</span></div>
 
 <div id="welcome">
-  <div class="icon">📊</div>
+  <div class="icon">&#128202;</div>
   <h2>Enter a ticker symbol to begin</h2>
   <p>Live OHLCV data, RSI, MACD, Bollinger Bands, and AI-generated buy/sell/hold signals.</p>
 </div>
@@ -315,10 +281,28 @@
         <div id="company-ticker">—</div>
         <div id="company-tags"></div>
         <div class="metric-grid" id="metric-grid"></div>
+
+        <!-- Performance row -->
+        <div class="perf-row" id="perf-row"></div>
+
+        <!-- 52-week position bar -->
+        <div class="week52-wrap" id="week52-wrap" style="display:none">
+          <div class="week52-label-top">52-Week Range</div>
+          <div class="week52-track">
+            <div class="week52-fill" id="week52-fill" style="width:0%"></div>
+            <div class="week52-needle" id="week52-needle" style="left:0%"></div>
+          </div>
+          <div class="week52-labels">
+            <span id="w52-low">—</span>
+            <span class="week52-price-label" id="w52-price">—</span>
+            <span id="w52-high">—</span>
+          </div>
+        </div>
+
         <div id="company-desc"></div>
       </div>
 
-      <!-- Signal -->
+      <!-- Signal Verdict -->
       <div class="card">
         <div class="card-title">Signal Verdict</div>
         <div id="signal-badge" class="signal-hold">HOLD</div>
@@ -326,6 +310,12 @@
         <div class="conf-bar"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
         <ul class="reasons-list" id="reasons-list"></ul>
         <div class="comp-scores" id="comp-scores"></div>
+      </div>
+
+      <!-- News Feed -->
+      <div class="card">
+        <div class="card-title">Recent News</div>
+        <div id="news-list"><p id="news-empty" style="display:none">No news available</p></div>
       </div>
 
     </div>
@@ -354,41 +344,22 @@
 </div>
 
 <script>
-  // ── CONFIG ─────────────────────────────────────────────────────────────────
   const API_BASE = 'https://live-stock-detection.onrender.com';
 
-  // ── PLOTLY SHARED LAYOUT DEFAULTS ──────────────────────────────────────────
+  // ── Plotly dark theme defaults ─────────────────────────────────────────────
   const DARK = {
     paper_bgcolor: '#161b22',
     plot_bgcolor:  '#0d1117',
-    font:          { color: '#e6edf3', family: 'Segoe UI, system-ui, sans-serif', size: 11 },
-    xaxis: {
-      gridcolor:    '#21262d',
-      linecolor:    '#30363d',
-      tickcolor:    '#30363d',
-      zerolinecolor:'#30363d',
-    },
-    yaxis: {
-      gridcolor:    '#21262d',
-      linecolor:    '#30363d',
-      tickcolor:    '#30363d',
-      zerolinecolor:'#30363d',
-    },
+    font: { color: '#e6edf3', family: 'Segoe UI, system-ui, sans-serif', size: 11 },
+    xaxis: { gridcolor: '#21262d', linecolor: '#30363d', tickcolor: '#30363d', zerolinecolor: '#30363d' },
+    yaxis: { gridcolor: '#21262d', linecolor: '#30363d', tickcolor: '#30363d', zerolinecolor: '#30363d' },
     margin: { t: 10, b: 36, l: 60, r: 20 },
     showlegend: true,
-    legend: {
-      bgcolor: 'rgba(0,0,0,0)',
-      bordercolor: '#30363d',
-      font: { size: 11 },
-      orientation: 'h',
-      y: 1.08,
-      x: 0,
-    },
+    legend: { bgcolor: 'rgba(0,0,0,0)', bordercolor: '#30363d', font: { size: 11 }, orientation: 'h', y: 1.08, x: 0 },
   };
+  const CFG = { responsive: true, displayModeBar: false };
 
-  const PLOTLY_CFG = { responsive: true, displayModeBar: false };
-
-  // ── HELPERS ────────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtNum(n, dec = 2) {
     if (n == null || isNaN(n)) return '—';
     if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + 'T';
@@ -398,22 +369,19 @@
   }
   function fmtPct(n) { return n == null ? '—' : (n * 100).toFixed(2) + '%'; }
   function scoreColor(s) {
-    if (s > 0.15) return '#3fb950';
+    if (s > 0.15)  return '#3fb950';
     if (s < -0.15) return '#f85149';
     return '#d29922';
   }
-  function quickTicker(t) {
-    document.getElementById('ticker-input').value = t;
-    analyze();
-  }
+  function pctColor(v) { return v == null ? 'var(--muted)' : v >= 0 ? 'var(--green)' : 'var(--red)'; }
+  function quickTicker(t) { document.getElementById('ticker-input').value = t; analyze(); }
   function showError(msg) {
     const el = document.getElementById('error-banner');
-    el.textContent = '⚠ ' + msg;
-    el.style.display = 'block';
+    el.textContent = '⚠ ' + msg; el.style.display = 'block';
   }
   function hideError() { document.getElementById('error-banner').style.display = 'none'; }
 
-  // ── ANALYZE ────────────────────────────────────────────────────────────────
+  // ── Main analyze flow ──────────────────────────────────────────────────────
   async function analyze() {
     const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
     if (!ticker) return;
@@ -443,184 +411,186 @@
     }
   }
 
-  // ── ENTER KEY ─────────────────────────────────────────────────────────────
   document.getElementById('ticker-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') analyze();
   });
 
-  // ── RENDER ALL ────────────────────────────────────────────────────────────
+  // ── Master render ──────────────────────────────────────────────────────────
   function render(data) {
-    renderCompany(data.ticker, data.company);
+    renderCompany(data.ticker, data.company, data.performance || {});
     renderSignal(data.signal);
+    renderNews(data.news || []);
     renderPriceChart(data.prices, data.indicators);
     renderVolumeChart(data.prices);
     renderRsiChart(data.prices.dates, data.indicators.rsi);
     renderMacdChart(data.prices.dates, data.indicators);
   }
 
-  // ── COMPANY PANEL ─────────────────────────────────────────────────────────
-  function renderCompany(ticker, c) {
+  // ── Company panel ──────────────────────────────────────────────────────────
+  function renderCompany(ticker, c, perf) {
+    // Name — use full company name, fall back to ticker only as last resort
     document.getElementById('company-name').textContent = c.name || ticker;
     document.getElementById('company-ticker').textContent = ticker;
 
+    // Sector / industry tags
     const tags = document.getElementById('company-tags');
     tags.innerHTML = '';
     [c.sector, c.industry].filter(Boolean).forEach(t => {
       const s = document.createElement('span');
-      s.className = 'tag';
-      s.textContent = t;
+      s.className = 'tag'; s.textContent = t;
       tags.appendChild(s);
     });
 
+    // Metric grid
     const metrics = [
-      ['Price',    c.current_price != null ? '$' + fmtNum(c.current_price) : '—'],
-      ['Mkt Cap',  c.market_cap    != null ? '$' + fmtNum(c.market_cap)    : '—'],
-      ['P/E',      c.pe_ratio      != null ? fmtNum(c.pe_ratio)             : '—'],
-      ['EPS',      c.eps           != null ? '$' + fmtNum(c.eps)            : '—'],
-      ['Beta',     c.beta          != null ? fmtNum(c.beta, 2)              : '—'],
-      ['Div Yld',  c.dividend_yield!= null ? fmtPct(c.dividend_yield)       : '—'],
-      ['52W High', c.week_52_high  != null ? '$' + fmtNum(c.week_52_high)   : '—'],
-      ['52W Low',  c.week_52_low   != null ? '$' + fmtNum(c.week_52_low)    : '—'],
+      ['Price',    c.current_price  != null ? '$' + fmtNum(c.current_price)  : '—'],
+      ['Mkt Cap',  c.market_cap     != null ? '$' + fmtNum(c.market_cap)     : '—'],
+      ['P/E',      c.pe_ratio       != null ? fmtNum(c.pe_ratio)              : '—'],
+      ['EPS',      c.eps            != null ? '$' + fmtNum(c.eps)             : '—'],
+      ['Beta',     c.beta           != null ? fmtNum(c.beta, 2)               : '—'],
+      ['Div Yld',  c.dividend_yield != null ? fmtPct(c.dividend_yield)        : '—'],
+      ['52W High', c.week_52_high   != null ? '$' + fmtNum(c.week_52_high)    : '—'],
+      ['52W Low',  c.week_52_low    != null ? '$' + fmtNum(c.week_52_low)     : '—'],
     ];
-    const grid = document.getElementById('metric-grid');
-    grid.innerHTML = metrics.map(([l, v]) => `
+    document.getElementById('metric-grid').innerHTML = metrics.map(([l, v]) => `
       <div class="metric">
         <div class="metric-label">${l}</div>
         <div class="metric-value">${v}</div>
       </div>`).join('');
 
+    // ── Performance row ──────────────────────────────────────────────────
+    const perfItems = [
+      ['1D',  perf.change_1d],
+      ['5D',  perf.change_5d],
+      ['30D', perf.change_30d],
+    ];
+    document.getElementById('perf-row').innerHTML = perfItems.map(([label, val]) => {
+      const color = pctColor(val);
+      const sign  = val != null && val > 0 ? '+' : '';
+      const text  = val != null ? sign + val.toFixed(2) + '%' : '—';
+      return `<span class="perf-pill" style="color:${color}">${label} ${text}</span>`;
+    }).join('');
+
+    // ── 52-week position bar ─────────────────────────────────────────────
+    const lo = c.week_52_low, hi = c.week_52_high, px = c.current_price;
+    const wrap = document.getElementById('week52-wrap');
+    if (lo != null && hi != null && px != null && hi > lo) {
+      const pct = Math.max(0, Math.min(100, (px - lo) / (hi - lo) * 100));
+      document.getElementById('week52-fill').style.width   = pct + '%';
+      document.getElementById('week52-needle').style.left  = pct + '%';
+      document.getElementById('w52-low').textContent       = '$' + fmtNum(lo);
+      document.getElementById('w52-price').textContent     = '$' + fmtNum(px);
+      document.getElementById('w52-high').textContent      = '$' + fmtNum(hi);
+      wrap.style.display = 'block';
+    } else {
+      wrap.style.display = 'none';
+    }
+
     document.getElementById('company-desc').textContent = c.description || '';
   }
 
-  // ── SIGNAL PANEL ──────────────────────────────────────────────────────────
+  // ── Signal panel ───────────────────────────────────────────────────────────
   function renderSignal(sig) {
     const badge = document.getElementById('signal-badge');
     badge.textContent = sig.verdict;
-    badge.className = 'signal-' + sig.verdict.toLowerCase();
+    badge.className   = 'signal-' + sig.verdict.toLowerCase();
 
-    const conf = sig.confidence;
-    const pct = Math.round(conf * 100);
+    const pct = Math.round((sig.confidence || 0) * 100);
     document.getElementById('conf-pct').textContent = pct + '%';
     const fill = document.getElementById('conf-fill');
-    fill.style.width = pct + '%';
-    fill.style.background =
-      sig.verdict === 'BUY'  ? '#3fb950' :
-      sig.verdict === 'SELL' ? '#f85149' : '#d29922';
+    fill.style.width      = pct + '%';
+    fill.style.background = sig.verdict === 'BUY' ? '#3fb950' : sig.verdict === 'SELL' ? '#f85149' : '#d29922';
 
-    const ul = document.getElementById('reasons-list');
-    ul.innerHTML = (sig.reasons || []).map(r => `<li>${r}</li>`).join('');
+    document.getElementById('reasons-list').innerHTML =
+      (sig.reasons || []).map(r => `<li>${r}</li>`).join('');
 
     const cs = sig.component_scores || {};
-    const scores = [
+    document.getElementById('comp-scores').innerHTML = [
       ['RSI',       cs.rsi_score],
       ['MACD',      cs.macd_score],
       ['Bollinger', cs.bollinger_score],
-    ];
-    document.getElementById('comp-scores').innerHTML = scores.map(([l, v]) => `
+    ].map(([l, v]) => `
       <div class="comp-score">
         <div class="label">${l}</div>
         <div class="val" style="color:${scoreColor(v)}">${v != null ? v.toFixed(2) : '—'}</div>
       </div>`).join('');
   }
 
-  // ── PRICE CHART ───────────────────────────────────────────────────────────
+  // ── News panel ─────────────────────────────────────────────────────────────
+  function renderNews(news) {
+    const el = document.getElementById('news-list');
+    if (!news || news.length === 0) {
+      el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:8px 0">No news available</p>';
+      return;
+    }
+    el.innerHTML = news.map(item => `
+      <div class="news-item">
+        <div class="news-meta">
+          <span class="news-source">${item.source || 'Unknown'}</span>
+          <span class="news-date">${item.published_at || ''}</span>
+        </div>
+        <a class="news-link" href="${item.url || '#'}" target="_blank" rel="noopener noreferrer"
+          >${item.title || ''}</a>
+      </div>`).join('');
+  }
+
+  // ── Price chart ────────────────────────────────────────────────────────────
   function renderPriceChart(prices, ind) {
-    const traces = [
+    Plotly.react('chart-price', [
       {
-        type: 'candlestick',
-        name: 'Price',
-        x:    prices.dates,
-        open: prices.open,
-        high: prices.high,
-        low:  prices.low,
-        close:prices.close,
+        type: 'candlestick', name: 'Price',
+        x: prices.dates, open: prices.open, high: prices.high,
+        low: prices.low, close: prices.close,
         increasing: { line: { color: '#3fb950' }, fillcolor: 'rgba(63,185,80,.4)' },
         decreasing: { line: { color: '#f85149' }, fillcolor: 'rgba(248,81,73,.4)' },
         showlegend: false,
       },
-      {
-        type: 'scatter', mode: 'lines', name: 'BB Upper',
+      { type: 'scatter', mode: 'lines', name: 'BB Upper',
         x: prices.dates, y: ind.bb_upper,
-        line: { color: '#6e7681', width: 1, dash: 'dot' },
-        showlegend: false,
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'BB Middle',
+        line: { color: '#6e7681', width: 1, dash: 'dot' }, showlegend: false },
+      { type: 'scatter', mode: 'lines', name: 'BB Middle',
         x: prices.dates, y: ind.bb_middle,
         line: { color: '#8b949e', width: 1, dash: 'dash' },
-        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)',
-        showlegend: false,
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'BB Lower',
+        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)', showlegend: false },
+      { type: 'scatter', mode: 'lines', name: 'BB Lower',
         x: prices.dates, y: ind.bb_lower,
         line: { color: '#6e7681', width: 1, dash: 'dot' },
-        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)',
-        showlegend: false,
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'SMA 20',
-        x: prices.dates, y: ind.sma20,
-        line: { color: '#58a6ff', width: 1.5 },
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'SMA 50',
-        x: prices.dates, y: ind.sma50,
-        line: { color: '#f0883e', width: 1.5 },
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'EMA 20',
-        x: prices.dates, y: ind.ema20,
-        line: { color: '#bc8cff', width: 1.5, dash: 'dash' },
-      },
-    ];
-
-    const layout = {
-      ...DARK,
-      height: 380,
+        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)', showlegend: false },
+      { type: 'scatter', mode: 'lines', name: 'SMA 20',
+        x: prices.dates, y: ind.sma20, line: { color: '#58a6ff', width: 1.5 } },
+      { type: 'scatter', mode: 'lines', name: 'SMA 50',
+        x: prices.dates, y: ind.sma50, line: { color: '#f0883e', width: 1.5 } },
+      { type: 'scatter', mode: 'lines', name: 'EMA 20',
+        x: prices.dates, y: ind.ema20, line: { color: '#bc8cff', width: 1.5, dash: 'dash' } },
+    ], {
+      ...DARK, height: 380,
       xaxis: { ...DARK.xaxis, rangeslider: { visible: false } },
       yaxis: { ...DARK.yaxis, tickprefix: '$' },
-    };
-
-    Plotly.react('chart-price', traces, layout, PLOTLY_CFG);
+    }, CFG);
   }
 
-  // ── VOLUME CHART ──────────────────────────────────────────────────────────
+  // ── Volume chart ───────────────────────────────────────────────────────────
   function renderVolumeChart(prices) {
     const colors = prices.close.map((c, i) =>
       i === 0 ? '#58a6ff' : (c >= prices.close[i - 1] ? '#3fb950' : '#f85149')
     );
-
-    const trace = {
-      type: 'bar',
-      name: 'Volume',
-      x: prices.dates,
-      y: prices.volume,
+    Plotly.react('chart-volume', [{
+      type: 'bar', name: 'Volume',
+      x: prices.dates, y: prices.volume,
       marker: { color: colors, opacity: 0.8 },
-    };
-
-    const layout = {
-      ...DARK,
-      height: 160,
-      showlegend: false,
+    }], {
+      ...DARK, height: 160, showlegend: false,
       yaxis: { ...DARK.yaxis, tickformat: '.2s' },
-    };
-
-    Plotly.react('chart-volume', [trace], layout, PLOTLY_CFG);
+    }, CFG);
   }
 
-  // ── RSI CHART ─────────────────────────────────────────────────────────────
+  // ── RSI chart ──────────────────────────────────────────────────────────────
   function renderRsiChart(dates, rsi) {
-    const trace = {
+    Plotly.react('chart-rsi', [{
       type: 'scatter', mode: 'lines', name: 'RSI',
-      x: dates, y: rsi,
-      line: { color: '#bc8cff', width: 2 },
-    };
-
-    const layout = {
-      ...DARK,
-      height: 200,
-      showlegend: false,
+      x: dates, y: rsi, line: { color: '#bc8cff', width: 2 },
+    }], {
+      ...DARK, height: 200, showlegend: false,
       yaxis: { ...DARK.yaxis, range: [0, 100] },
       shapes: [
         { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70,
@@ -629,54 +599,32 @@
           line: { color: '#3fb950', width: 1, dash: 'dot' } },
         { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 100,
           fillcolor: 'rgba(248,81,73,.05)', line: { width: 0 } },
-        { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 30,
-          fillcolor: 'rgba(63,185,80,.05)', line: { width: 0 } },
+        { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0,  y1: 30,
+          fillcolor: 'rgba(63,185,80,.05)',  line: { width: 0 } },
       ],
       annotations: [
         { xref: 'paper', x: 1, y: 70, text: 'Overbought (70)', showarrow: false,
           xanchor: 'right', yanchor: 'bottom', font: { color: '#f85149', size: 10 } },
-        { xref: 'paper', x: 1, y: 30, text: 'Oversold (30)', showarrow: false,
-          xanchor: 'right', yanchor: 'top', font: { color: '#3fb950', size: 10 } },
+        { xref: 'paper', x: 1, y: 30, text: 'Oversold (30)',   showarrow: false,
+          xanchor: 'right', yanchor: 'top',    font: { color: '#3fb950', size: 10 } },
       ],
-    };
-
-    Plotly.react('chart-rsi', [trace], layout, PLOTLY_CFG);
+    }, CFG);
   }
 
-  // ── MACD CHART ────────────────────────────────────────────────────────────
+  // ── MACD chart ─────────────────────────────────────────────────────────────
   function renderMacdChart(dates, ind) {
     const histColors = (ind.macd_hist || []).map(v =>
       v == null ? '#8b949e' : (v >= 0 ? 'rgba(63,185,80,.8)' : 'rgba(248,81,73,.8)')
     );
-
-    const traces = [
-      {
-        type: 'bar', name: 'Histogram',
-        x: dates, y: ind.macd_hist,
-        marker: { color: histColors },
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'MACD',
-        x: dates, y: ind.macd,
-        line: { color: '#58a6ff', width: 2 },
-      },
-      {
-        type: 'scatter', mode: 'lines', name: 'Signal',
-        x: dates, y: ind.macd_signal,
-        line: { color: '#f0883e', width: 2 },
-      },
-    ];
-
-    const layout = {
-      ...DARK,
-      height: 220,
-      shapes: [
-        { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 0,
-          line: { color: '#30363d', width: 1 } },
-      ],
-    };
-
-    Plotly.react('chart-macd', traces, layout, PLOTLY_CFG);
+    Plotly.react('chart-macd', [
+      { type: 'bar',     name: 'Histogram', x: dates, y: ind.macd_hist, marker: { color: histColors } },
+      { type: 'scatter', mode: 'lines', name: 'MACD',   x: dates, y: ind.macd,        line: { color: '#58a6ff', width: 2 } },
+      { type: 'scatter', mode: 'lines', name: 'Signal', x: dates, y: ind.macd_signal, line: { color: '#f0883e', width: 2 } },
+    ], {
+      ...DARK, height: 220,
+      shapes: [{ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 0,
+        line: { color: '#30363d', width: 1 } }],
+    }, CFG);
   }
 </script>
 

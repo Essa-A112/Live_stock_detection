@@ -7,17 +7,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from database.db import (
-    init_db,
-    get_db,
-    is_cache_fresh,
-    get_cached_prices,
-    get_cached_company,
-    get_cached_indicators,
-    upsert_prices,
-    upsert_company,
-    upsert_indicators,
+    init_db, get_db, is_cache_fresh,
+    get_cached_prices, get_cached_company, get_cached_indicators,
+    upsert_prices, upsert_company, upsert_indicators,
 )
-from data.ingestion import fetch_ohlcv, fetch_fundamentals
+from data.ingestion import (
+    fetch_ohlcv, fetch_fundamentals, fetch_news, compute_performance,
+)
 from analysis.technical import run_full_analysis, generate_signals
 
 
@@ -44,7 +40,6 @@ def health():
 
 
 def _clean(val):
-    """Return None for NaN/Inf so JSON serialisation never chokes."""
     if val is None:
         return None
     try:
@@ -56,14 +51,12 @@ def _clean(val):
 
 
 def _col(df, col):
-    """Return a list of cleaned values for a DataFrame column."""
     if col not in df.columns:
         return []
     return [_clean(v) for v in df[col].tolist()]
 
 
 def _build_signal_from_cache(price_rows, ind_map) -> dict:
-    """Reconstruct a minimal DataFrame from cached ORM rows and compute signal."""
     def pick(date_str, field):
         row = ind_map.get(date_str)
         return _clean(getattr(row, field, None)) if row else None
@@ -88,14 +81,12 @@ def get_stock(ticker: str):
 
     with get_db() as db:
         fresh = is_cache_fresh(ticker, db)
-
         if fresh:
             price_rows = get_cached_prices(ticker, db)
             if not price_rows:
                 fresh = False
 
         if not fresh:
-            # Fetch live data
             df = fetch_ohlcv(ticker)
             if df.empty:
                 raise HTTPException(
@@ -104,10 +95,11 @@ def get_stock(ticker: str):
                 )
 
             fundamentals = fetch_fundamentals(ticker)
-            df = run_full_analysis(df)
-            signal = generate_signals(df)
+            news         = fetch_news(ticker)
+            df           = run_full_analysis(df)
+            signal       = generate_signals(df)
+            performance  = compute_performance(df["close"].tolist())
 
-            # Persist
             price_dicts = df[["date", "open", "high", "low", "close", "volume"]].to_dict("records")
             upsert_prices(ticker, price_dicts, db)
             upsert_company(ticker, fundamentals, db)
@@ -119,9 +111,11 @@ def get_stock(ticker: str):
 
             dates = [str(d) for d in df["date"].tolist()]
             return {
-                "ticker": ticker,
+                "ticker":      ticker,
                 "last_updated": datetime.now(timezone.utc).isoformat(),
-                "company": fundamentals,
+                "company":     fundamentals,
+                "performance": performance,
+                "news":        news,
                 "prices": {
                     "dates":  dates,
                     "open":   _col(df, "open"),
@@ -146,11 +140,11 @@ def get_stock(ticker: str):
                 "signal": signal,
             }
 
-        # Serve from cache
+        # ── Serve from cache ──────────────────────────────────────────────
         company_row = get_cached_company(ticker, db)
-        ind_rows = get_cached_indicators(ticker, db)
+        ind_rows    = get_cached_indicators(ticker, db)
 
-        dates = [str(r.date) for r in price_rows]
+        dates   = [str(r.date) for r in price_rows]
         ind_map = {str(r.date): r for r in ind_rows}
 
         company = {}
@@ -175,12 +169,16 @@ def get_stock(ticker: str):
         def ind_col(field):
             return [_clean(getattr(ind_map.get(d), field, None)) for d in dates]
 
-        signal = _build_signal_from_cache(price_rows, ind_map)
+        signal      = _build_signal_from_cache(price_rows, ind_map)
+        performance = compute_performance([_clean(r.close) for r in price_rows])
+        news        = fetch_news(ticker)   # always fresh — news changes
 
         return {
-            "ticker": ticker,
+            "ticker":      ticker,
             "last_updated": datetime.now(timezone.utc).isoformat(),
-            "company": company,
+            "company":     company,
+            "performance": performance,
+            "news":        news,
             "prices": {
                 "dates":  dates,
                 "open":   [_clean(r.open)   for r in price_rows],
