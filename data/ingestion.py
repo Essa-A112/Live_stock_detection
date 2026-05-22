@@ -47,7 +47,7 @@ def _v7_quote(ticker: str, sess: requests.Session) -> dict:
 def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
     """Download OHLCV history. Returns empty DataFrame on failure."""
     try:
-        df = yf.Ticker(ticker, session=_session()).history(
+        df = yf.Ticker(ticker).history(
             period=period, interval=interval, auto_adjust=True
         )
         if df.empty:
