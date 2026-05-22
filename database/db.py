@@ -31,7 +31,7 @@ def get_db():
         db.close()
 
 
-def is_cache_fresh(ticker: str, db: Session, max_age_minutes: int = 60) -> bool:
+def is_cache_fresh(ticker: str, db: Session, max_age_minutes: int = 5) -> bool:
     cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
     row = db.query(StockPrice).filter(
         StockPrice.ticker == ticker,
