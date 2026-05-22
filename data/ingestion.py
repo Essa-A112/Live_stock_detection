@@ -15,25 +15,10 @@ def _safe(val):
     return val
 
 
-def _session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update({
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/120.0.0.0 Safari/537.36'
-        ),
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-    })
-    return s
-
-
-def _v7_quote(ticker: str, sess: requests.Session) -> dict:
-    """Direct Yahoo Finance v7/finance/quote — different endpoint from quoteSummary,
-    more reliable on cloud IPs. Returns the first result dict or {}."""
+def _v7_quote(ticker: str) -> dict:
+    """Direct Yahoo Finance v7/finance/quote fallback. Returns first result or {}."""
     try:
-        r = sess.get(
+        r = requests.get(
             'https://query1.finance.yahoo.com/v7/finance/quote',
             params={'symbols': ticker},
             timeout=8,
@@ -104,12 +89,11 @@ def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.Da
 
 def fetch_fundamentals(ticker: str) -> dict:
     """Three-tier fundamentals fetch:
-    1. fast_info  — chart endpoint, same as history(), never fails
+    1. fast_info  — always available; provides price, market cap, 52-week range
     2. .info      — quoteSummary endpoint, may be blocked on cloud IPs
     3. v7/quote   — alternate REST endpoint, fallback when .info returns empty
     """
-    sess = _session()
-    yft = yf.Ticker(ticker, session=sess)
+    yft = yf.Ticker(ticker)
 
     # ── Tier 1: fast_info (always available) ──────────────────────────────
     fi = {}
@@ -130,7 +114,7 @@ def fetch_fundamentals(ticker: str) -> dict:
         pass
 
     # ── Tier 3: v7/quote (only if .info came back empty) ──────────────────
-    quote = _v7_quote(ticker, sess) if not info else {}
+    quote = _v7_quote(ticker) if not info else {}
 
     def pick(*keys_sources):
         """Return the first non-None value from (key, source_dict) pairs."""
@@ -192,7 +176,7 @@ def fetch_fundamentals(ticker: str) -> dict:
 def fetch_news(ticker: str) -> list[dict]:
     """Fetch up to 5 recent news items via yfinance (no API key required)."""
     try:
-        items = yf.Ticker(ticker, session=_session()).news or []
+        items = yf.Ticker(ticker).news or []
         out = []
         for item in items[:5]:
             ts = item.get("providerPublishTime", 0)
