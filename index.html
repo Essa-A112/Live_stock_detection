@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Analysis Terminal</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --card:      #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --yellow:    #d29922;
+      --blue:      #58a6ff;
+      --purple:    #bc8cff;
+      --orange:    #f0883e;
+      --accent:    #1f6feb;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    header h1 span { color: var(--blue); }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      min-width: 260px;
+    }
+    #ticker-input {
+      flex: 1;
+      max-width: 200px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color .2s;
+    }
+    #ticker-input:focus { border-color: var(--accent); }
+    #ticker-input::placeholder { font-weight: 400; text-transform: none; color: var(--muted); }
+
+    .quick-tickers { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quick-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .quick-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+    #analyze-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    #analyze-btn:hover { background: #388bfd; }
+    #analyze-btn:disabled { background: var(--border); cursor: not-allowed; }
+
+    /* ── Error banner ─────────────────────────── */
+    #error-banner {
+      display: none;
+      background: rgba(248,81,73,.12);
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      color: var(--red);
+      margin: 16px 24px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    /* ── Spinner ─────────────────────────────── */
+    #spinner {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      gap: 12px;
+      color: var(--muted);
+    }
+    .spin {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main content ────────────────────────── */
+    #content { display: none; padding: 20px 24px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Cards ─────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Company panel ─────────────────────── */
+    #company-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }
+    #company-ticker {
+      font-size: 13px;
+      color: var(--blue);
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-block;
+      background: rgba(88,166,255,.1);
+      border: 1px solid rgba(88,166,255,.25);
+      border-radius: 4px;
+      color: var(--blue);
+      font-size: 11px;
+      padding: 2px 7px;
+      margin: 0 4px 4px 0;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .metric {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .metric-value { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+    #company-desc {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── Signal panel ─────────────────────── */
+    #signal-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 64px;
+      border-radius: 8px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+    .signal-buy  { background: rgba(63,185,80,.15);  border: 2px solid var(--green);  color: var(--green);  }
+    .signal-sell { background: rgba(248,81,73,.15);  border: 2px solid var(--red);    color: var(--red);    }
+    .signal-hold { background: rgba(210,153,34,.15); border: 2px solid var(--yellow); color: var(--yellow); }
+
+    .conf-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .conf-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
+    .conf-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+    .reasons-list { list-style: none; }
+    .reasons-list li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .reasons-list li:last-child { border-bottom: none; }
+    .reasons-list li::before { content: "›"; color: var(--blue); flex-shrink: 0; margin-top: 1px; }
+
+    .comp-scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .comp-score {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .comp-score .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .comp-score .val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+    /* ── Charts ───────────────────────────── */
+    .chart-section { display: flex; flex-direction: column; gap: 16px; }
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+    .chart-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
+
+    /* ── Welcome state ───────────────────── */
+    #welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      color: var(--muted);
+      text-align: center;
+      gap: 12px;
+    }
+    #welcome .icon { font-size: 48px; }
+    #welcome h2 { font-size: 18px; color: var(--text); }
+    #welcome p { font-size: 13px; max-width: 360px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📈 Stock <span>Analysis</span> Terminal</h1>
+  <div class="search-row">
+    <input id="ticker-input" type="text" placeholder="Enter ticker (e.g. AAPL)" maxlength="10" />
+    <button id="analyze-btn" onclick="analyze()">Analyze</button>
+  </div>
+  <div class="quick-tickers">
+    <button class="quick-btn" onclick="quickTicker('AAPL')">AAPL</button>
+    <button class="quick-btn" onclick="quickTicker('MSFT')">MSFT</button>
+    <button class="quick-btn" onclick="quickTicker('GOOGL')">GOOGL</button>
+    <button class="quick-btn" onclick="quickTicker('TSLA')">TSLA</button>
+    <button class="quick-btn" onclick="quickTicker('NVDA')">NVDA</button>
+    <button class="quick-btn" onclick="quickTicker('SPY')">SPY</button>
+  </div>
+</header>
+
+<div id="error-banner"></div>
+<div id="spinner"><div class="spin"></div><span id="spinner-text">Fetching data…</span></div>
+
+<div id="welcome">
+  <div class="icon">📊</div>
+  <h2>Enter a ticker symbol to begin</h2>
+  <p>Live OHLCV data, RSI, MACD, Bollinger Bands, and AI-generated buy/sell/hold signals.</p>
+</div>
+
+<div id="content">
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- Company Info -->
+      <div class="card">
+        <div class="card-title">Company</div>
+        <div id="company-name">—</div>
+        <div id="company-ticker">—</div>
+        <div id="company-tags"></div>
+        <div class="metric-grid" id="metric-grid"></div>
+        <div id="company-desc"></div>
+      </div>
+
+      <!-- Signal -->
+      <div class="card">
+        <div class="card-title">Signal Verdict</div>
+        <div id="signal-badge" class="signal-hold">HOLD</div>
+        <div class="conf-row"><span>Confidence</span><span id="conf-pct">0%</span></div>
+        <div class="conf-bar"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+        <ul class="reasons-list" id="reasons-list"></ul>
+        <div class="comp-scores" id="comp-scores"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-label">Price — Candlestick + Bollinger Bands + Moving Averages</div>
+        <div id="chart-price"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">Volume</div>
+        <div id="chart-volume"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">RSI (14)</div>
+        <div id="chart-rsi"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">MACD (12, 26, 9)</div>
+        <div id="chart-macd"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────────────────────────
+  const API_BASE = 'http://localhost:8000';
+
+  // ── PLOTLY SHARED LAYOUT DEFAULTS ──────────────────────────────────────────
+  const DARK = {
+    paper_bgcolor: '#161b22',
+    plot_bgcolor:  '#0d1117',
+    font:          { color: '#e6edf3', family: 'Segoe UI, system-ui, sans-serif', size: 11 },
+    xaxis: {
+      gridcolor:    '#21262d',
+      linecolor:    '#30363d',
+      tickcolor:    '#30363d',
+      zerolinecolor:'#30363d',
+    },
+    yaxis: {
+      gridcolor:    '#21262d',
+      linecolor:    '#30363d',
+      tickcolor:    '#30363d',
+      zerolinecolor:'#30363d',
+    },
+    margin: { t: 10, b: 36, l: 60, r: 20 },
+    showlegend: true,
+    legend: {
+      bgcolor: 'rgba(0,0,0,0)',
+      bordercolor: '#30363d',
+      font: { size: 11 },
+      orientation: 'h',
+      y: 1.08,
+      x: 0,
+    },
+  };
+
+  const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+
+  // ── HELPERS ────────────────────────────────────────────────────────────────
+  function fmtNum(n, dec = 2) {
+    if (n == null || isNaN(n)) return '—';
+    if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+    if (Math.abs(n) >= 1e9)  return (n / 1e9).toFixed(2) + 'B';
+    if (Math.abs(n) >= 1e6)  return (n / 1e6).toFixed(2) + 'M';
+    return n.toFixed(dec);
+  }
+  function fmtPct(n) { return n == null ? '—' : (n * 100).toFixed(2) + '%'; }
+  function scoreColor(s) {
+    if (s > 0.15) return '#3fb950';
+    if (s < -0.15) return '#f85149';
+    return '#d29922';
+  }
+  function quickTicker(t) {
+    document.getElementById('ticker-input').value = t;
+    analyze();
+  }
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  }
+  function hideError() { document.getElementById('error-banner').style.display = 'none'; }
+
+  // ── ANALYZE ────────────────────────────────────────────────────────────────
+  async function analyze() {
+    const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
+    if (!ticker) return;
+
+    hideError();
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('content').style.display = 'none';
+    document.getElementById('spinner').style.display = 'flex';
+    document.getElementById('spinner-text').textContent = `Fetching ${ticker}…`;
+    document.getElementById('analyze-btn').disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/stock/${ticker}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      render(data);
+      document.getElementById('content').style.display = 'block';
+    } catch (e) {
+      showError(e.message || 'Failed to fetch data. Is the API server running?');
+      document.getElementById('welcome').style.display = 'flex';
+    } finally {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('analyze-btn').disabled = false;
+    }
+  }
+
+  // ── ENTER KEY ─────────────────────────────────────────────────────────────
+  document.getElementById('ticker-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') analyze();
+  });
+
+  // ── RENDER ALL ────────────────────────────────────────────────────────────
+  function render(data) {
+    renderCompany(data.ticker, data.company);
+    renderSignal(data.signal);
+    renderPriceChart(data.prices, data.indicators);
+    renderVolumeChart(data.prices);
+    renderRsiChart(data.prices.dates, data.indicators.rsi);
+    renderMacdChart(data.prices.dates, data.indicators);
+  }
+
+  // ── COMPANY PANEL ─────────────────────────────────────────────────────────
+  function renderCompany(ticker, c) {
+    document.getElementById('company-name').textContent = c.name || ticker;
+    document.getElementById('company-ticker').textContent = ticker;
+
+    const tags = document.getElementById('company-tags');
+    tags.innerHTML = '';
+    [c.sector, c.industry].filter(Boolean).forEach(t => {
+      const s = document.createElement('span');
+      s.className = 'tag';
+      s.textContent = t;
+      tags.appendChild(s);
+    });
+
+    const metrics = [
+      ['Price',    c.current_price != null ? '$' + fmtNum(c.current_price) : '—'],
+      ['Mkt Cap',  c.market_cap    != null ? '$' + fmtNum(c.market_cap)    : '—'],
+      ['P/E',      c.pe_ratio      != null ? fmtNum(c.pe_ratio)             : '—'],
+      ['EPS',      c.eps           != null ? '$' + fmtNum(c.eps)            : '—'],
+      ['Beta',     c.beta          != null ? fmtNum(c.beta, 2)              : '—'],
+      ['Div Yld',  c.dividend_yield!= null ? fmtPct(c.dividend_yield)       : '—'],
+      ['52W High', c.week_52_high  != null ? '$' + fmtNum(c.week_52_high)   : '—'],
+      ['52W Low',  c.week_52_low   != null ? '$' + fmtNum(c.week_52_low)    : '—'],
+    ];
+    const grid = document.getElementById('metric-grid');
+    grid.innerHTML = metrics.map(([l, v]) => `
+      <div class="metric">
+        <div class="metric-label">${l}</div>
+        <div class="metric-value">${v}</div>
+      </div>`).join('');
+
+    document.getElementById('company-desc').textContent = c.description || '';
+  }
+
+  // ── SIGNAL PANEL ──────────────────────────────────────────────────────────
+  function renderSignal(sig) {
+    const badge = document.getElementById('signal-badge');
+    badge.textContent = sig.verdict;
+    badge.className = 'signal-' + sig.verdict.toLowerCase();
+
+    const conf = sig.confidence;
+    const pct = Math.round(conf * 100);
+    document.getElementById('conf-pct').textContent = pct + '%';
+    const fill = document.getElementById('conf-fill');
+    fill.style.width = pct + '%';
+    fill.style.background =
+      sig.verdict === 'BUY'  ? '#3fb950' :
+      sig.verdict === 'SELL' ? '#f85149' : '#d29922';
+
+    const ul = document.getElementById('reasons-list');
+    ul.innerHTML = (sig.reasons || []).map(r => `<li>${r}</li>`).join('');
+
+    const cs = sig.component_scores || {};
+    const scores = [
+      ['RSI',       cs.rsi_score],
+      ['MACD',      cs.macd_score],
+      ['Bollinger', cs.bollinger_score],
+    ];
+    document.getElementById('comp-scores').innerHTML = scores.map(([l, v]) => `
+      <div class="comp-score">
+        <div class="label">${l}</div>
+        <div class="val" style="color:${scoreColor(v)}">${v != null ? v.toFixed(2) : '—'}</div>
+      </div>`).join('');
+  }
+
+  // ── PRICE CHART ───────────────────────────────────────────────────────────
+  function renderPriceChart(prices, ind) {
+    const traces = [
+      {
+        type: 'candlestick',
+        name: 'Price',
+        x:    prices.dates,
+        open: prices.open,
+        high: prices.high,
+        low:  prices.low,
+        close:prices.close,
+        increasing: { line: { color: '#3fb950' }, fillcolor: 'rgba(63,185,80,.4)' },
+        decreasing: { line: { color: '#f85149' }, fillcolor: 'rgba(248,81,73,.4)' },
+        showlegend: false,
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'BB Upper',
+        x: prices.dates, y: ind.bb_upper,
+        line: { color: '#6e7681', width: 1, dash: 'dot' },
+        showlegend: false,
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'BB Middle',
+        x: prices.dates, y: ind.bb_middle,
+        line: { color: '#8b949e', width: 1, dash: 'dash' },
+        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)',
+        showlegend: false,
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'BB Lower',
+        x: prices.dates, y: ind.bb_lower,
+        line: { color: '#6e7681', width: 1, dash: 'dot' },
+        fill: 'tonexty', fillcolor: 'rgba(110,118,129,.05)',
+        showlegend: false,
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'SMA 20',
+        x: prices.dates, y: ind.sma20,
+        line: { color: '#58a6ff', width: 1.5 },
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'SMA 50',
+        x: prices.dates, y: ind.sma50,
+        line: { color: '#f0883e', width: 1.5 },
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'EMA 20',
+        x: prices.dates, y: ind.ema20,
+        line: { color: '#bc8cff', width: 1.5, dash: 'dash' },
+      },
+    ];
+
+    const layout = {
+      ...DARK,
+      height: 380,
+      xaxis: { ...DARK.xaxis, rangeslider: { visible: false } },
+      yaxis: { ...DARK.yaxis, tickprefix: '$' },
+    };
+
+    Plotly.react('chart-price', traces, layout, PLOTLY_CFG);
+  }
+
+  // ── VOLUME CHART ──────────────────────────────────────────────────────────
+  function renderVolumeChart(prices) {
+    const colors = prices.close.map((c, i) =>
+      i === 0 ? '#58a6ff' : (c >= prices.close[i - 1] ? '#3fb950' : '#f85149')
+    );
+
+    const trace = {
+      type: 'bar',
+      name: 'Volume',
+      x: prices.dates,
+      y: prices.volume,
+      marker: { color: colors, opacity: 0.8 },
+    };
+
+    const layout = {
+      ...DARK,
+      height: 160,
+      showlegend: false,
+      yaxis: { ...DARK.yaxis, tickformat: '.2s' },
+    };
+
+    Plotly.react('chart-volume', [trace], layout, PLOTLY_CFG);
+  }
+
+  // ── RSI CHART ─────────────────────────────────────────────────────────────
+  function renderRsiChart(dates, rsi) {
+    const trace = {
+      type: 'scatter', mode: 'lines', name: 'RSI',
+      x: dates, y: rsi,
+      line: { color: '#bc8cff', width: 2 },
+    };
+
+    const layout = {
+      ...DARK,
+      height: 200,
+      showlegend: false,
+      yaxis: { ...DARK.yaxis, range: [0, 100] },
+      shapes: [
+        { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70,
+          line: { color: '#f85149', width: 1, dash: 'dot' } },
+        { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30,
+          line: { color: '#3fb950', width: 1, dash: 'dot' } },
+        { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 100,
+          fillcolor: 'rgba(248,81,73,.05)', line: { width: 0 } },
+        { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 30,
+          fillcolor: 'rgba(63,185,80,.05)', line: { width: 0 } },
+      ],
+      annotations: [
+        { xref: 'paper', x: 1, y: 70, text: 'Overbought (70)', showarrow: false,
+          xanchor: 'right', yanchor: 'bottom', font: { color: '#f85149', size: 10 } },
+        { xref: 'paper', x: 1, y: 30, text: 'Oversold (30)', showarrow: false,
+          xanchor: 'right', yanchor: 'top', font: { color: '#3fb950', size: 10 } },
+      ],
+    };
+
+    Plotly.react('chart-rsi', [trace], layout, PLOTLY_CFG);
+  }
+
+  // ── MACD CHART ────────────────────────────────────────────────────────────
+  function renderMacdChart(dates, ind) {
+    const histColors = (ind.macd_hist || []).map(v =>
+      v == null ? '#8b949e' : (v >= 0 ? 'rgba(63,185,80,.8)' : 'rgba(248,81,73,.8)')
+    );
+
+    const traces = [
+      {
+        type: 'bar', name: 'Histogram',
+        x: dates, y: ind.macd_hist,
+        marker: { color: histColors },
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'MACD',
+        x: dates, y: ind.macd,
+        line: { color: '#58a6ff', width: 2 },
+      },
+      {
+        type: 'scatter', mode: 'lines', name: 'Signal',
+        x: dates, y: ind.macd_signal,
+        line: { color: '#f0883e', width: 2 },
+      },
+    ];
+
+    const layout = {
+      ...DARK,
+      height: 220,
+      shapes: [
+        { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 0,
+          line: { color: '#30363d', width: 1 } },
+      ],
+    };
+
+    Plotly.react('chart-macd', traces, layout, PLOTLY_CFG);
+  }
+</script>
+
+</body>
+</html>
