@@ -1,18 +1,24 @@
 # Live Stock Detection — Stock Analysis Pipeline
 
-A full end-to-end stock analysis pipeline with live data ingestion, technical analysis, SQLite persistence, a FastAPI backend, and a dark-themed interactive frontend.
+A full end-to-end stock analysis pipeline with live Yahoo Finance data, technical analysis, SQLite persistence, a FastAPI backend deployed on Render, and a dark-themed interactive frontend hosted on GitHub Pages.
+
+**Live demo:** [essa-a112.github.io/Live_stock_detection](https://essa-a112.github.io/Live_stock_detection)
+**API:** [live-stock-detection.onrender.com](https://live-stock-detection.onrender.com)
 
 ---
 
 ## Features
 
-- **Live OHLCV data** via `yfinance` (6-month history, adjustable)
-- **Company fundamentals** — market cap, P/E, EPS, beta, dividend yield, 52-week range
-- **Technical indicators** — RSI (14), MACD (12/26/9), Bollinger Bands (20/2σ), SMA 20/50, EMA 20, volatility
-- **Signal engine** — weighted scoring across RSI + MACD + Bollinger Bands → BUY / SELL / HOLD with confidence score and reasoning
-- **SQLite cache** — results stored via SQLAlchemy; re-requests within 60 minutes served from cache
-- **FastAPI backend** — single endpoint `/stock/{ticker}` returning complete JSON
-- **Dark-themed frontend** — interactive Plotly charts (candlestick, volume, RSI, MACD), company info panel, signal verdict panel
+- **Live Yahoo Finance data** — OHLCV (6-month daily history) and company fundamentals sourced directly from Yahoo Finance via yfinance; data refreshes every 5 minutes
+- **Company fundamentals** — full name, sector, industry, market cap, P/E, EPS, beta, dividend yield, 52-week high/low, current price, and business description
+- **Performance summary** — 1-day, 5-day, and 30-day price change percentages, colour-coded green/red
+- **52-week range bar** — visual progress bar showing where the current price sits between the 52-week low and high
+- **News feed** — latest 5 headlines for the ticker with source, date, and clickable link; always fetched fresh
+- **Technical indicators** — RSI (14), MACD (12/26/9), Bollinger Bands (20/2σ), SMA 20/50, EMA 20, annualised volatility
+- **Signal engine** — weighted scoring across RSI + MACD + Bollinger Bands → BUY / SELL / HOLD with confidence score, strength score, per-indicator component scores, and plain-English reasoning
+- **SQLite cache** — results cached via SQLAlchemy; repeated requests within 5 minutes served from cache to reduce latency
+- **FastAPI backend** — `/health` and `/stock/{ticker}` endpoints with full CORS support
+- **Dark-themed frontend** — interactive Plotly.js charts (candlestick + BB + MAs, volume, RSI, MACD), company info panel, signal verdict panel, quick-ticker buttons
 
 ---
 
@@ -23,14 +29,15 @@ Live_stock_detection/
 ├── api/
 │   └── main.py            # FastAPI app, CORS middleware, /stock/{ticker} endpoint
 ├── data/
-│   └── ingestion.py       # yfinance OHLCV + fundamentals fetcher
+│   └── ingestion.py       # yfinance OHLCV + three-tier fundamentals + news fetcher
 ├── analysis/
 │   └── technical.py       # RSI, MACD, Bollinger Bands, MAs, signal scoring
 ├── database/
 │   ├── models.py          # SQLAlchemy ORM models (StockPrice, CompanyInfo, TechnicalIndicator)
-│   └── db.py              # Engine, session, CRUD helpers, cache check
+│   └── db.py              # Engine, session, CRUD helpers, 5-minute cache check
+├── index.html             # Single-file dark UI (served by GitHub Pages)
 ├── frontend/
-│   └── index.html         # Single-file dark UI with embedded Plotly charts
+│   └── index.html         # Same file for local development
 ├── requirements.txt
 └── README.md
 ```
@@ -40,7 +47,7 @@ Live_stock_detection/
 ## Prerequisites
 
 - Python 3.11+
-- Internet access (for yfinance)
+- Internet access (for Yahoo Finance)
 
 ---
 
@@ -87,9 +94,7 @@ Or serve it with any static file server:
 cd frontend && python -m http.server 3000
 ```
 
-Then visit `http://localhost:3000`.
-
-Type any US ticker (e.g. `AAPL`, `TSLA`, `SPY`) and click **Analyze**.
+Then visit `http://localhost:3000` and type any ticker (e.g. `AAPL`, `TSLA`, `DECK`) and click **Analyze**.
 
 ---
 
@@ -100,12 +105,12 @@ Type any US ticker (e.g. `AAPL`, `TSLA`, `SPY`) and click **Analyze**.
 Returns server status.
 
 ```json
-{ "status": "ok", "timestamp": "2026-05-21T14:30:00Z" }
+{ "status": "ok", "timestamp": "2026-05-22T14:30:00Z" }
 ```
 
 ### `GET /stock/{ticker}`
 
-Runs the full pipeline for the given ticker symbol. Results are cached in SQLite for 60 minutes.
+Runs the full pipeline for the given ticker symbol. Results are cached in SQLite for 5 minutes.
 
 **Example:** `GET /stock/AAPL`
 
@@ -114,7 +119,7 @@ Runs the full pipeline for the given ticker symbol. Results are cached in SQLite
 ```json
 {
   "ticker": "AAPL",
-  "last_updated": "2026-05-21T14:30:00Z",
+  "last_updated": "2026-05-22T14:30:00Z",
   "company": {
     "name": "Apple Inc.",
     "sector": "Technology",
@@ -131,8 +136,21 @@ Runs the full pipeline for the given ticker symbol. Results are cached in SQLite
     "week_52_high": 215.30,
     "week_52_low": 163.80
   },
+  "performance": {
+    "change_1d": -0.42,
+    "change_5d": 1.87,
+    "change_30d": 5.14
+  },
+  "news": [
+    {
+      "title": "Apple hits record high ahead of WWDC",
+      "source": "Reuters",
+      "published_at": "May 22, 2026",
+      "url": "https://..."
+    }
+  ],
   "prices": {
-    "dates":  ["2025-11-21", "..."],
+    "dates":  ["2025-11-22", "..."],
     "open":   [182.5, "..."],
     "high":   [184.75, "..."],
     "low":    [182.1, "..."],
@@ -181,8 +199,8 @@ Runs the full pipeline for the given ticker symbol. Results are cached in SQLite
 
 Signals are generated from a weighted combination of three indicators:
 
-| Indicator      | Weight | Buy Condition              | Sell Condition             |
-|----------------|--------|----------------------------|----------------------------|
+| Indicator      | Weight | Buy Condition              | Sell Condition              |
+|----------------|--------|----------------------------|-----------------------------|
 | RSI (14)       | 35%    | RSI < 30 (oversold)        | RSI > 70 (overbought)       |
 | MACD histogram | 40%    | Histogram positive, rising | Histogram negative, falling |
 | Bollinger Bands| 25%    | Price below lower band     | Price above upper band      |
@@ -191,26 +209,42 @@ A combined score in range [-1, 1] is computed. Scores > 0.30 → **BUY**, < -0.3
 
 ---
 
-## Deploying the Frontend to GitHub Pages
+## Fundamentals Data Strategy
 
-1. The frontend is a single static HTML file — no build step needed.
-2. Push `frontend/index.html` to your repo.
-3. In GitHub → Settings → Pages, set source to the `frontend/` folder (or root).
-4. Update the `API_BASE` constant in `frontend/index.html` to point to your deployed backend URL:
-   ```js
-   const API_BASE = 'https://your-backend.example.com';
-   ```
-5. The backend has `allow_origins=["*"]` so it accepts calls from any GitHub Pages domain.
+Company fundamentals are fetched using a three-tier fallback to ensure data populates reliably on cloud-hosted backends (e.g. Render) where Yahoo Finance's `quoteSummary` endpoint is often blocked:
+
+1. **`fast_info`** — same chart endpoint as `history()`, always available; provides price, market cap, 52-week range
+2. **`.info`** — `quoteSummary` endpoint; provides full name, sector, P/E, EPS, beta, dividend yield when accessible
+3. **`v7/finance/quote`** — alternate REST endpoint; fallback when `.info` returns empty
+
+---
+
+## Deployment
+
+### Backend — Render
+
+1. Connect the GitHub repo to a new Render web service
+2. Set **Build Command:** `pip install -r requirements.txt`
+3. Set **Start Command:** `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
+4. Render auto-deploys on every push to `main`
+
+### Frontend — GitHub Pages
+
+1. Go to **Settings → Pages** in the repo
+2. Set source to the root of the `main` branch
+3. `index.html` at the repo root is served automatically
+4. `API_BASE` in `index.html` already points to the Render URL — no changes needed
 
 ---
 
 ## Tech Stack
 
-| Layer           | Technology                              |
-|-----------------|-----------------------------------------|
-| Data ingestion  | yfinance                                |
-| Analysis        | pandas, numpy                           |
-| Database        | SQLite + SQLAlchemy 2.0                 |
-| Backend API     | FastAPI + uvicorn                       |
-| Frontend charts | Plotly.js (CDN)                         |
-| Frontend style  | Vanilla CSS (dark terminal theme)       |
+| Layer           | Technology                        |
+|-----------------|-----------------------------------|
+| Data source     | Yahoo Finance (via yfinance)      |
+| Analysis        | pandas, numpy                     |
+| Database        | SQLite + SQLAlchemy 2.0           |
+| Backend API     | FastAPI + uvicorn                 |
+| Hosting         | Render (API), GitHub Pages (UI)   |
+| Frontend charts | Plotly.js (CDN)                   |
+| Frontend style  | Vanilla CSS (dark terminal theme) |
