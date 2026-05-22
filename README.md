@@ -1,6 +1,6 @@
 # Live Stock Detection — Stock Analysis Pipeline
 
-A full end-to-end stock analysis pipeline with live Yahoo Finance data, technical analysis, SQLite persistence, a FastAPI backend deployed on Render, and a dark-themed interactive frontend hosted on GitHub Pages.
+A full end-to-end stock analysis pipeline with live market data, technical analysis, SQLite persistence, a FastAPI backend deployed on Render, and a dark-themed interactive frontend hosted on GitHub Pages.
 
 **Live demo:** [essa-a112.github.io/Live_stock_detection](https://essa-a112.github.io/Live_stock_detection)
 **API:** [live-stock-detection.onrender.com](https://live-stock-detection.onrender.com)
@@ -9,8 +9,8 @@ A full end-to-end stock analysis pipeline with live Yahoo Finance data, technica
 
 ## Features
 
-- **Live Yahoo Finance data** — OHLCV (6-month daily history) and company fundamentals sourced directly from Yahoo Finance via yfinance; data refreshes every 5 minutes
-- **Company fundamentals** — full name, sector, industry, market cap, P/E, EPS, beta, dividend yield, 52-week high/low, current price, and business description
+- **Live OHLCV data** — 6-month daily price history via Alpaca Markets API (`adjustment=all`); data refreshes every 5 minutes
+- **Company fundamentals** — full name, sector, industry, market cap, P/E, EPS, beta, dividend yield, 52-week high/low, current price, and business description via Yahoo Finance
 - **Performance summary** — 1-day, 5-day, and 30-day price change percentages, colour-coded green/red
 - **52-week range bar** — visual progress bar showing where the current price sits between the 52-week low and high
 - **News feed** — latest 5 headlines for the ticker with source, date, and clickable link; always fetched fresh
@@ -29,7 +29,7 @@ Live_stock_detection/
 ├── api/
 │   └── main.py            # FastAPI app, CORS middleware, /stock/{ticker} endpoint
 ├── data/
-│   └── ingestion.py       # yfinance OHLCV + three-tier fundamentals + news fetcher
+│   └── ingestion.py       # Alpaca OHLCV + yfinance fundamentals + news fetcher
 ├── analysis/
 │   └── technical.py       # RSI, MACD, Bollinger Bands, MAs, signal scoring
 ├── database/
@@ -47,7 +47,28 @@ Live_stock_detection/
 ## Prerequisites
 
 - Python 3.11+
-- Internet access (for Yahoo Finance)
+- Alpaca Markets account (free) — for OHLCV data
+- Internet access — for Yahoo Finance fundamentals and news
+
+---
+
+## Environment Variables
+
+| Variable            | Required | Description                          |
+|---------------------|----------|--------------------------------------|
+| `ALPACA_API_KEY`    | Yes      | Alpaca Markets API key ID            |
+| `ALPACA_SECRET_KEY` | Yes      | Alpaca Markets API secret key        |
+
+Get free API keys at [alpaca.markets](https://alpaca.markets). Paper trading account keys work fine.
+
+Set these in your shell for local development:
+
+```bash
+export ALPACA_API_KEY=your_key_here
+export ALPACA_SECRET_KEY=your_secret_here
+```
+
+On Render, add them under **Environment → Environment Variables** in your service settings.
 
 ---
 
@@ -94,7 +115,7 @@ Or serve it with any static file server:
 cd frontend && python -m http.server 3000
 ```
 
-Then visit `http://localhost:3000` and type any ticker (e.g. `AAPL`, `TSLA`, `DECK`) and click **Analyze**.
+Then visit `http://localhost:3000` and type any US ticker (e.g. `AAPL`, `TSLA`, `SPY`) and click **Analyze**.
 
 ---
 
@@ -200,7 +221,7 @@ Runs the full pipeline for the given ticker symbol. Results are cached in SQLite
 Signals are generated from a weighted combination of three indicators:
 
 | Indicator      | Weight | Buy Condition              | Sell Condition              |
-|----------------|--------|----------------------------|-----------------------------|
+|----------------|--------|----------------------------|-----------------------------||
 | RSI (14)       | 35%    | RSI < 30 (oversold)        | RSI > 70 (overbought)       |
 | MACD histogram | 40%    | Histogram positive, rising | Histogram negative, falling |
 | Bollinger Bands| 25%    | Price below lower band     | Price above upper band      |
@@ -209,12 +230,20 @@ A combined score in range [-1, 1] is computed. Scores > 0.30 → **BUY**, < -0.3
 
 ---
 
-## Fundamentals Data Strategy
+## Data Sources
 
-Company fundamentals are fetched using a three-tier fallback to ensure data populates reliably on cloud-hosted backends (e.g. Render) where Yahoo Finance's `quoteSummary` endpoint is often blocked:
+| Data                 | Source                     | Notes                                           |
+|----------------------|----------------------------|-------------------------------------------------|
+| OHLCV history        | Alpaca Markets API         | Free tier, `adjustment=all`, 180-day daily bars |
+| Company fundamentals | Yahoo Finance (yfinance)   | Three-tier fallback for cloud IP compatibility  |
+| News headlines       | Yahoo Finance (yfinance)   | Always fetched fresh, no cache                  |
 
-1. **`fast_info`** — same chart endpoint as `history()`, always available; provides price, market cap, 52-week range
-2. **`.info`** — `quoteSummary` endpoint; provides full name, sector, P/E, EPS, beta, dividend yield when accessible
+### Fundamentals Fallback Strategy
+
+Yahoo Finance’s `quoteSummary` endpoint is often blocked on cloud IPs (e.g. Render). Three tiers are tried in order:
+
+1. **`fast_info`** — chart endpoint, always available; provides price, market cap, 52-week range
+2. **`.info`** — `quoteSummary`; provides name, sector, P/E, EPS, beta, dividend yield when accessible
 3. **`v7/finance/quote`** — alternate REST endpoint; fallback when `.info` returns empty
 
 ---
@@ -226,7 +255,8 @@ Company fundamentals are fetched using a three-tier fallback to ensure data popu
 1. Connect the GitHub repo to a new Render web service
 2. Set **Build Command:** `pip install -r requirements.txt`
 3. Set **Start Command:** `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
-4. Render auto-deploys on every push to `main`
+4. Add environment variables: `ALPACA_API_KEY` and `ALPACA_SECRET_KEY`
+5. Render auto-deploys on every push to `main`
 
 ### Frontend — GitHub Pages
 
@@ -239,12 +269,13 @@ Company fundamentals are fetched using a three-tier fallback to ensure data popu
 
 ## Tech Stack
 
-| Layer           | Technology                        |
-|-----------------|-----------------------------------|
-| Data source     | Yahoo Finance (via yfinance)      |
-| Analysis        | pandas, numpy                     |
-| Database        | SQLite + SQLAlchemy 2.0           |
-| Backend API     | FastAPI + uvicorn                 |
-| Hosting         | Render (API), GitHub Pages (UI)   |
-| Frontend charts | Plotly.js (CDN)                   |
-| Frontend style  | Vanilla CSS (dark terminal theme) |
+| Layer               | Technology                        |
+|---------------------|-----------------------------------|
+| OHLCV data          | Alpaca Markets API                |
+| Fundamentals / news | Yahoo Finance (via yfinance)      |
+| Analysis            | pandas, numpy                     |
+| Database            | SQLite + SQLAlchemy 2.0           |
+| Backend API         | FastAPI + uvicorn                 |
+| Hosting             | Render (API), GitHub Pages (UI)   |
+| Frontend charts     | Plotly.js (CDN)                   |
+| Frontend style      | Vanilla CSS (dark terminal theme) |
