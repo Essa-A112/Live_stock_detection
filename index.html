@@ -255,7 +255,7 @@
     <button class="quick-btn" onclick="quickTicker('GOOGL')">GOOGL</button>
     <button class="quick-btn" onclick="quickTicker('TSLA')">TSLA</button>
     <button class="quick-btn" onclick="quickTicker('NVDA')">NVDA</button>
-    <button class="quick-btn" onclick="quickTicker('DECK')">DECK</button>
+    <button class="quick-btn" onclick="quickTicker('SPY')">SPY</button>
   </div>
 </header>
 
@@ -428,11 +428,9 @@
 
   // ── Company panel ──────────────────────────────────────────────────────────
   function renderCompany(ticker, c, perf) {
-    // Name — use full company name, fall back to ticker only as last resort
     document.getElementById('company-name').textContent = c.name || ticker;
     document.getElementById('company-ticker').textContent = ticker;
 
-    // Sector / industry tags
     const tags = document.getElementById('company-tags');
     tags.innerHTML = '';
     [c.sector, c.industry].filter(Boolean).forEach(t => {
@@ -441,7 +439,6 @@
       tags.appendChild(s);
     });
 
-    // Metric grid
     const metrics = [
       ['Price',    c.current_price  != null ? '$' + fmtNum(c.current_price)  : '—'],
       ['Mkt Cap',  c.market_cap     != null ? '$' + fmtNum(c.market_cap)     : '—'],
@@ -458,7 +455,6 @@
         <div class="metric-value">${v}</div>
       </div>`).join('');
 
-    // ── Performance row ──────────────────────────────────────────────────
     const perfItems = [
       ['1D',  perf.change_1d],
       ['5D',  perf.change_5d],
@@ -471,7 +467,6 @@
       return `<span class="perf-pill" style="color:${color}">${label} ${text}</span>`;
     }).join('');
 
-    // ── 52-week position bar ─────────────────────────────────────────────
     const lo = c.week_52_low, hi = c.week_52_high, px = c.current_price;
     const wrap = document.getElementById('week52-wrap');
     if (lo != null && hi != null && px != null && hi > lo) {
