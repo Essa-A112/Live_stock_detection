@@ -90,16 +90,24 @@ def generate_signals(df: pd.DataFrame) -> dict:
     Produce a BUY / SELL / HOLD verdict from the most recent row's indicators.
     Weighted scoring: MACD 40%, RSI 35%, Bollinger 25%.
     """
-    last = df.dropna(subset=["rsi", "macd", "macd_hist"]).iloc[-1]
+    _hold = lambda reasons: {
+        "verdict": "HOLD",
+        "confidence": 0.0,
+        "strength_score": 0.0,
+        "reasons": reasons,
+        "component_scores": {"rsi_score": 0.0, "macd_score": 0.0, "bollinger_score": 0.0},
+    }
 
-    rsi_val = last["rsi"]
-    macd_hist_val = last["macd_hist"]
-    macd_val = last["macd"]
-    signal_val = last["macd_signal"]
-    price = last["close"]
-    bb_upper = last["bb_upper"]
-    bb_lower = last["bb_lower"]
-    bb_middle = last["bb_middle"]
+    valid_df = df.dropna(subset=["rsi", "macd", "macd_hist"])
+    if valid_df.empty:
+        return _hold(["Insufficient price history for signal generation"])
+
+    last = valid_df.iloc[-1]
+
+    rsi_val = float(last["rsi"])
+    macd_hist_val = float(last["macd_hist"])
+    macd_val = float(last["macd"])
+    price = float(last["close"])
 
     reasons: list[str] = []
 
@@ -150,28 +158,40 @@ def generate_signals(df: pd.DataFrame) -> dict:
             reasons.append("MACD line below zero confirms downtrend")
 
     # --- Bollinger score [-1, 1] ---
-    band_range = bb_upper - bb_lower if (bb_upper - bb_lower) != 0 else 1
-    if price < bb_lower:
-        bb_score = 0.85
-        reasons.append("Price below lower Bollinger Band — potential reversal")
-    elif price < (bb_lower + 0.25 * band_range):
-        bb_score = 0.55
-        reasons.append("Price near lower Bollinger Band")
-    elif price > bb_upper:
-        bb_score = -0.85
-        reasons.append("Price above upper Bollinger Band — potentially overextended")
-    elif price > (bb_upper - 0.25 * band_range):
-        bb_score = -0.55
-        reasons.append("Price near upper Bollinger Band")
-    elif price < bb_middle:
-        bb_score = 0.15
-        reasons.append("Price in lower half of Bollinger Bands")
-    elif price > bb_middle:
-        bb_score = -0.15
-        reasons.append("Price in upper half of Bollinger Bands")
-    else:
+    try:
+        bb_upper = float(last["bb_upper"])
+        bb_lower = float(last["bb_lower"])
+        bb_middle = float(last["bb_middle"])
+        bb_ok = not (math.isnan(bb_upper) or math.isnan(bb_lower) or math.isnan(bb_middle))
+    except (KeyError, TypeError, ValueError):
+        bb_ok = False
+
+    if not bb_ok:
         bb_score = 0.0
-        reasons.append("Price at Bollinger midline")
+        reasons.append("Bollinger Band data unavailable (insufficient history)")
+    else:
+        band_range = (bb_upper - bb_lower) or 1.0
+        if price < bb_lower:
+            bb_score = 0.85
+            reasons.append("Price below lower Bollinger Band — potential reversal")
+        elif price < (bb_lower + 0.25 * band_range):
+            bb_score = 0.55
+            reasons.append("Price near lower Bollinger Band")
+        elif price > bb_upper:
+            bb_score = -0.85
+            reasons.append("Price above upper Bollinger Band — potentially overextended")
+        elif price > (bb_upper - 0.25 * band_range):
+            bb_score = -0.55
+            reasons.append("Price near upper Bollinger Band")
+        elif price < bb_middle:
+            bb_score = 0.15
+            reasons.append("Price in lower half of Bollinger Bands")
+        elif price > bb_middle:
+            bb_score = -0.15
+            reasons.append("Price in upper half of Bollinger Bands")
+        else:
+            bb_score = 0.0
+            reasons.append("Price at Bollinger midline")
 
     # --- Aggregate ---
     combined = rsi_score * 0.35 + macd_score * 0.40 + bb_score * 0.25
