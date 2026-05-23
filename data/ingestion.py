@@ -30,19 +30,21 @@ def _v7_quote(ticker: str) -> dict:
 
 
 def _quotesummary_modules(ticker: str) -> dict:
-    """Tier-4 fallback: fetch a crumb then call quoteSummary with
-    summaryDetail + defaultKeyStatistics modules. These contain trailingPE,
-    trailingEps, beta, and dividendYield. Returns a flat dict of raw values."""
+    """Tier-4 fallback: fetch a crumb (with session cookie) then call quoteSummary
+    with summaryDetail + defaultKeyStatistics modules. Returns a flat dict."""
     _UA = (
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
         'AppleWebKit/537.36 (KHTML, like Gecko) '
         'Chrome/124.0.0.0 Safari/537.36'
     )
+    # Session is required: Yahoo ties the crumb to the session cookie set during
+    # the getcrumb call; a plain requests.get loses the cookie and the
+    # subsequent quoteSummary call returns Unauthorized.
+    sess = requests.Session()
+    sess.headers.update({'User-Agent': _UA})
     try:
-        # Step 1 — obtain a fresh crumb (query2 tends to be less aggressive)
-        crumb_r = requests.get(
+        crumb_r = sess.get(
             'https://query2.finance.yahoo.com/v1/test/getcrumb',
-            headers={'User-Agent': _UA},
             timeout=6,
         )
         crumb = crumb_r.text.strip()
@@ -50,14 +52,12 @@ def _quotesummary_modules(ticker: str) -> dict:
         if not crumb or '+' in crumb or len(crumb) > 24:
             return {}
 
-        # Step 2 — quoteSummary with the modules that hold the missing fields
-        r = requests.get(
+        r = sess.get(
             f'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}',
             params={
                 'modules': 'summaryDetail,defaultKeyStatistics',
                 'crumb':   crumb,
             },
-            headers={'User-Agent': _UA},
             timeout=10,
         )
         results = r.json().get('quoteSummary', {}).get('result') or []
@@ -139,10 +139,10 @@ def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.Da
 
 def fetch_fundamentals(ticker: str) -> dict:
     """Four-tier fundamentals fetch:
-    1. fast_info        — chart endpoint, always available; price/mktcap/52W
-    2. .info            — quoteSummary via yfinance (curl_cffi); full data when accessible
-    3. v7/quote         — alternate REST endpoint; fallback when .info is empty
-    4. quoteSummary     — crumb-based direct call for PE/EPS/beta/dividend only
+    1. fast_info   — chart endpoint, always available; price/mktcap/52W
+    2. .info       — quoteSummary via yfinance (curl_cffi); full data when accessible
+    3. v7/quote    — always run; fills PE/EPS/beta/dividend when .info is partial
+    4. quoteSummary — crumb+cookie session call; last resort for missing fields
     """
     yft = yf.Ticker(ticker)
 
@@ -164,8 +164,10 @@ def fetch_fundamentals(ticker: str) -> dict:
     except Exception:
         pass
 
-    # ── Tier 3: v7/quote (only if .info came back empty) ──────────────────
-    quote = _v7_quote(ticker) if not info else {}
+    # ── Tier 3: v7/quote (always run — supplements info for missing fields) ──
+    # yfinance can return name/sector on cloud IPs but still omit PE/EPS/beta;
+    # v7/quote is a separate endpoint that often carries those fields.
+    quote = _v7_quote(ticker)
 
     def pick(*keys_sources):
         """Return the first non-None value from (key, source_dict) pairs."""
@@ -175,8 +177,8 @@ def fetch_fundamentals(ticker: str) -> dict:
                 return v
         return None
 
-    # ── Tier 4: crumb-based quoteSummary — only for the four fields that
-    #    tiers 1-3 cannot supply reliably from cloud IPs ────────────────────
+    # ── Tier 4: crumb-based quoteSummary — only when tiers 1–3 still leave
+    #    PE/EPS/beta as None (adds ~1 s; skipped when not needed) ────────────
     need_t4 = (
         pick(("trailingPE",  info), ("trailingPE",  quote)) is None or
         pick(("trailingEps", info), ("epsTrailingTwelveMonths", quote)) is None or
