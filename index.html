@@ -27,7 +27,7 @@
       background: var(--bg);
       color: var(--text);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      font-size: 14px;
+      font-sie: 14px;
       min-height: 100vh;
     }
 
@@ -40,13 +40,13 @@
       gap: 20px;
       flex-wrap: wrap;
     }
-    header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; }
+    header h1 { font-sie: 20px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; }
     header h1 span { color: var(--blue); }
     .search-row { display: flex; gap: 8px; flex: 1; min-width: 260px; }
     #ticker-input {
       flex: 1; max-width: 200px;
       background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); padding: 8px 12px; font-size: 14px;
+      color: var(--text); padding: 8px 12px; font-sie: 14px;
       font-family: 'Courier New', monospace; font-weight: 700;
       text-transform: uppercase; outline: none; transition: border-color .2s;
     }
@@ -55,16 +55,16 @@
     .quick-tickers { display: flex; gap: 6px; flex-wrap: wrap; }
     .quick-btn {
       background: transparent; border: 1px solid var(--border); border-radius: 4px;
-      color: var(--muted); padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all .15s;
+      color: var(--muted); padding: 4px 10px; font-sie: 12px; cursor: pointer; transition: all .15s;
     }
     .quick-btn:hover { border-color: var(--blue); color: var(--blue); }
-    #analyze-btn {
+    #analye-btn {
       background: var(--accent); border: none; border-radius: 6px;
-      color: #fff; padding: 8px 20px; font-size: 14px; font-weight: 600;
+      color: #fff; padding: 8px 20px; font-sie: 14px; font-weight: 600;
       cursor: pointer; transition: background .2s; white-space: nowrap;
     }
-    #analyze-btn:hover { background: #388bfd; }
-    #analyze-btn:disabled { background: var(--border); cursor: not-allowed; }
+    #analye-btn:hover { background: #388bfd; }
+    #analyse-btn:disabled { background: var(--border); cursor: not-allowed; }
 
     #error-banner {
       display: none;
@@ -244,7 +244,7 @@
   <h1>&#128200; Stock <span>Analysis</span> Terminal</h1>
   <div class="search-row">
     <input id="ticker-input" type="text" placeholder="Enter ticker (e.g. AAPL)" maxlength="10" />
-    <button id="analyze-btn" onclick="analyze()">Analyze</button>
+    <button id="analyse-btn" onclick="analyse()">Analyse</button>
   </div>
   <div class="quick-tickers">
     <button class="quick-btn" onclick="quickTicker('AAPL')">AAPL</button>
@@ -344,17 +344,17 @@
 
       <div class="card">
         <div class="card-title">Key Levels</div>
-        <div id="key-levels-content"><p class="wl-empty">Analyze a ticker to see levels.</p></div>
+        <div id="key-levels-content"><p class="wl-empty">Analyse a ticker to see levels.</p></div>
       </div>
 
       <div class="card">
         <div class="card-title">Risk Metrics</div>
-        <div id="risk-metrics-content"><p class="wl-empty">Analyze a ticker to see metrics.</p></div>
+        <div id="risk-metrics-content"><p class="wl-empty">Analyse a ticker to see metrics.</p></div>
       </div>
 
       <div class="card">
         <div class="card-title">Earnings &amp; Events</div>
-        <div id="events-content"><p class="wl-empty">Analyze a ticker to see events.</p></div>
+        <div id="events-content"><p class="wl-empty">Analyse a ticker to see events.</p></div>
       </div>
 
       <div class="card">
@@ -420,7 +420,7 @@
     return '#d29922';
   }
   function pctColor(v) { return v == null ? 'var(--muted)' : v >= 0 ? 'var(--green)' : 'var(--red)'; }
-  function quickTicker(t) { document.getElementById('ticker-input').value = t; analyze(); }
+  function quickTicker(t) { document.getElementById('ticker-input').value = t; analyse(); }
   function showError(msg) {
     const el = document.getElementById('error-banner');
     el.textContent = '⚠ ' + msg; el.style.display = 'block';
@@ -528,8 +528,8 @@
     renderMacdChart(fp.dates, fi);
   }
 
-  // ── Analyze ────────────────────────────────────────────────────────────────
-  async function analyze() {
+  // ── Analyse ────────────────────────────────────────────────────────────────
+  async function analyse() {
     const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
     if (!ticker) return;
     hideError();
@@ -537,7 +537,7 @@
     document.getElementById('content').style.display = 'none';
     document.getElementById('spinner').style.display = 'flex';
     document.getElementById('spinner-text').textContent = 'Fetching ' + ticker + '…';
-    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('analyse-btn').disabled = true;
     try {
       const res = await fetch(API_BASE + '/stock/' + ticker);
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'HTTP ' + res.status); }
@@ -549,10 +549,10 @@
       document.getElementById('welcome').style.display = 'flex';
     } finally {
       document.getElementById('spinner').style.display = 'none';
-      document.getElementById('analyze-btn').disabled = false;
+      document.getElementById('analyse-btn').disabled = false;
     }
   }
-  document.getElementById('ticker-input').addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
+  document.getElementById('ticker-input').addEventListener('keydown', e => { if (e.key === 'Enter') analyse(); });
 
   // ── Master render ──────────────────────────────────────────────────────────
   function render(data) {
