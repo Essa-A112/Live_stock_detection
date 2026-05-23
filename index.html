@@ -31,7 +31,7 @@
       min-height: 100vh;
     }
 
-    /* ── Header ──────────────────────────────────── */
+    /* ── Header ──────────────────────────────── */
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
@@ -70,7 +70,7 @@
     #analyze-btn:hover { background: #388bfd; }
     #analyze-btn:disabled { background: var(--border); cursor: not-allowed; }
 
-    /* ── Error / Spinner ─────────────────────────── */
+    /* ── Error / Spinner ─────────────────────── */
     #error-banner {
       display: none;
       background: rgba(248,81,73,.12); border: 1px solid var(--red);
@@ -88,7 +88,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Layout ──────────────────────────────────── */
+    /* ── Layout ──────────────────────────────── */
     #content { display: none; padding: 20px 24px; }
     .grid {
       display: grid;
@@ -97,7 +97,7 @@
     }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
-    /* ── Cards ───────────────────────────────────── */
+    /* ── Cards ───────────────────────────────── */
     .card {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 8px; padding: 16px;
@@ -107,7 +107,7 @@
       letter-spacing: .8px; color: var(--muted); margin-bottom: 12px;
     }
 
-    /* ── Company panel ───────────────────────────── */
+    /* ── Company panel ─────────────────────────── */
     #company-name { font-size: 18px; font-weight: 700; margin-bottom: 2px; line-height: 1.2; }
     #company-ticker { font-size: 13px; color: var(--blue); font-family: monospace; margin-bottom: 10px; }
     .tag {
@@ -135,7 +135,7 @@
       font-size: 12px; font-weight: 600; white-space: nowrap;
     }
 
-    /* ── 52-week position bar ────────────────────── */
+    /* ── 52-week position bar ──────────────────────── */
     .week52-wrap { margin-top: 14px; }
     .week52-label-top {
       font-size: 10px; color: var(--muted); text-transform: uppercase;
@@ -163,7 +163,7 @@
     }
     .week52-price-label { font-weight: 700; color: var(--text); }
 
-    /* ── Company description ─────────────────────── */
+    /* ── Company description ───────────────────────── */
     #company-desc {
       margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6;
       display: -webkit-box; -webkit-line-clamp: 5;
@@ -217,9 +217,8 @@
       text-decoration: none;
     }
     .news-link:hover { color: var(--blue); text-decoration: underline; }
-    #news-empty { font-size: 12px; color: var(--muted); padding: 8px 0; }
 
-    /* ── Charts ──────────────────────────────────── */
+    /* ── Charts ────────────────────────────────── */
     .chart-section { display: flex; flex-direction: column; gap: 16px; }
     .chart-card {
       background: var(--card); border: 1px solid var(--border);
@@ -229,6 +228,43 @@
       font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .8px; color: var(--muted); margin-bottom: 6px;
     }
+
+    /* ── Chart controls (range + type) ───────────────── */
+    .chart-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .range-btns { display: flex; gap: 4px; }
+    .range-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      padding: 3px 9px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .range-btn:hover:not(.active) { border-color: var(--blue); color: var(--blue); }
+    .range-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .type-toggle { display: flex; }
+    .type-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 3px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .type-btn:first-child { border-radius: 4px 0 0 4px; }
+    .type-btn:last-child  { border-radius: 0 4px 4px 0; border-left: none; }
+    .type-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .type-btn:hover:not(.active) { border-color: var(--blue); color: var(--blue); }
 
     /* ── Welcome ─────────────────────────────────── */
     #welcome {
@@ -281,11 +317,7 @@
         <div id="company-ticker">—</div>
         <div id="company-tags"></div>
         <div class="metric-grid" id="metric-grid"></div>
-
-        <!-- Performance row -->
         <div class="perf-row" id="perf-row"></div>
-
-        <!-- 52-week position bar -->
         <div class="week52-wrap" id="week52-wrap" style="display:none">
           <div class="week52-label-top">52-Week Range</div>
           <div class="week52-track">
@@ -298,7 +330,6 @@
             <span id="w52-high">—</span>
           </div>
         </div>
-
         <div id="company-desc"></div>
       </div>
 
@@ -315,17 +346,34 @@
       <!-- News Feed -->
       <div class="card">
         <div class="card-title">Recent News</div>
-        <div id="news-list"><p id="news-empty" style="display:none">No news available</p></div>
+        <div id="news-list"></div>
       </div>
 
     </div>
 
     <!-- RIGHT COLUMN -->
     <div class="chart-section">
+
+      <!-- Price chart with controls -->
       <div class="chart-card">
-        <div class="chart-label">Price — Candlestick + Bollinger Bands + Moving Averages</div>
+        <div class="chart-controls">
+          <div class="range-btns">
+            <button class="range-btn active" data-range="1D" onclick="setRange('1D')">1D</button>
+            <button class="range-btn" data-range="1W" onclick="setRange('1W')">1W</button>
+            <button class="range-btn" data-range="1M" onclick="setRange('1M')">1M</button>
+            <button class="range-btn" data-range="3M" onclick="setRange('3M')">3M</button>
+            <button class="range-btn" data-range="6M" onclick="setRange('6M')">6M</button>
+            <button class="range-btn" data-range="1Y" onclick="setRange('1Y')">1Y</button>
+          </div>
+          <div class="type-toggle">
+            <button class="type-btn active" data-type="candlestick" onclick="setChartType('candlestick')">Candlestick</button>
+            <button class="type-btn" data-type="line" onclick="setChartType('line')">Line</button>
+          </div>
+        </div>
+        <div class="chart-label">Price — Bollinger Bands + Moving Averages + Forecast</div>
         <div id="chart-price"></div>
       </div>
+
       <div class="chart-card">
         <div class="chart-label">Volume</div>
         <div id="chart-volume"></div>
@@ -346,7 +394,12 @@
 <script>
   const API_BASE = 'https://live-stock-detection.onrender.com';
 
-  // ── Plotly dark theme defaults ─────────────────────────────────────────────
+  // ── Global chart state ──────────────────────────────────────────────────
+  let _globalData  = null;
+  let _activeRange = '1D';
+  let _chartType   = 'candlestick';
+
+  // ── Plotly dark theme defaults ─────────────────────────────────────────
   const DARK = {
     paper_bgcolor: '#161b22',
     plot_bgcolor:  '#0d1117',
@@ -359,7 +412,7 @@
   };
   const CFG = { responsive: true, displayModeBar: false };
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────
   function fmtNum(n, dec = 2) {
     if (n == null || isNaN(n)) return '—';
     if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + 'T';
@@ -381,7 +434,121 @@
   }
   function hideError() { document.getElementById('error-banner').style.display = 'none'; }
 
-  // ── Main analyze flow ──────────────────────────────────────────────────────
+  // ── Range + type controls ──────────────────────────────────────────
+  function setRange(range) {
+    _activeRange = range;
+    document.querySelectorAll('.range-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.range === range)
+    );
+    renderCharts();
+  }
+
+  function setChartType(type) {
+    _chartType = type;
+    document.querySelectorAll('.type-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.type === type)
+    );
+    renderCharts();
+  }
+
+  // ── Filtering helpers ───────────────────────────────────────────────
+  function getFilteredIndices(dates, range) {
+    if (!dates || !dates.length) return [];
+    const last   = new Date(dates[dates.length - 1]);
+    const dayMap = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365 };
+    const cutoff = new Date(last);
+    cutoff.setDate(cutoff.getDate() - (dayMap[range] || 180));
+    return dates.reduce((acc, d, i) => { if (new Date(d) >= cutoff) acc.push(i); return acc; }, []);
+  }
+
+  function byIdx(arr, indices) {
+    if (!arr) return [];
+    return indices.map(i => arr[i] !== undefined ? arr[i] : null);
+  }
+
+  // ── 14-day linear regression forecast ────────────────────────────────
+  function computePrediction(dates, closes) {
+    const valid = closes.map((c, i) => [i, c]).filter(([, c]) => c != null && !isNaN(c));
+    const n = Math.min(30, valid.length);
+    if (n < 3) return null;
+
+    const pts = valid.slice(-n);
+    const xs  = pts.map((_, i) => i);
+    const ys  = pts.map(([, c]) => c);
+    const mx  = xs.reduce((a, b) => a + b, 0) / n;
+    const my  = ys.reduce((a, b) => a + b, 0) / n;
+    const ssxx = xs.reduce((a, xi)    => a + (xi - mx) ** 2, 0);
+    const ssxy = xs.reduce((a, xi, i) => a + (xi - mx) * (ys[i] - my), 0);
+    if (ssxx === 0) return null;
+    const slope     = ssxy / ssxx;
+    const intercept = my - slope * mx;
+
+    const resid = ys.map((y, i) => y - (slope * xs[i] + intercept));
+    const se    = Math.sqrt(resid.reduce((a, r) => a + r * r, 0) / Math.max(n - 2, 1));
+
+    // Anchor the line to the last real close so it connects visually
+    const lastClose = closes[closes.length - 1];
+    const predDates = [dates[dates.length - 1]];
+    const predClose = [lastClose];
+    const predUpper = [lastClose];
+    const predLower = [lastClose];
+
+    let d    = new Date(dates[dates.length - 1]);
+    let step = 0;
+    while (step < 14) {
+      d = new Date(d.getTime() + 86400000);
+      if (d.getDay() === 0 || d.getDay() === 6) continue; // skip weekends
+      step++;
+      const pred = slope * (n - 1 + step) + intercept;
+      // Prediction interval widens with forecast horizon
+      const band = 2 * se * Math.sqrt(1 + 1 / n + (step * step) / ssxx);
+      predDates.push(d.toISOString().split('T')[0]);
+      predClose.push(Math.max(0.01, pred));
+      predUpper.push(Math.max(0.01, pred + band));
+      predLower.push(Math.max(0.01, pred - band));
+    }
+
+    return { dates: predDates, close: predClose, upper: predUpper, lower: predLower };
+  }
+
+  // ── Master chart renderer (range + type aware) ───────────────────────────
+  function renderCharts() {
+    if (!_globalData) return;
+    const { prices, indicators } = _globalData;
+    const idx = getFilteredIndices(prices.dates, _activeRange);
+    if (!idx.length) return;
+
+    const fp = {
+      dates:  byIdx(prices.dates,  idx),
+      open:   byIdx(prices.open,   idx),
+      high:   byIdx(prices.high,   idx),
+      low:    byIdx(prices.low,    idx),
+      close:  byIdx(prices.close,  idx),
+      volume: byIdx(prices.volume, idx),
+    };
+    const fi = {
+      rsi:         byIdx(indicators.rsi,         idx),
+      macd:        byIdx(indicators.macd,        idx),
+      macd_signal: byIdx(indicators.macd_signal, idx),
+      macd_hist:   byIdx(indicators.macd_hist,   idx),
+      bb_upper:    byIdx(indicators.bb_upper,    idx),
+      bb_middle:   byIdx(indicators.bb_middle,   idx),
+      bb_lower:    byIdx(indicators.bb_lower,    idx),
+      sma20:       byIdx(indicators.sma20,       idx),
+      sma50:       byIdx(indicators.sma50,       idx),
+      ema20:       byIdx(indicators.ema20,       idx),
+    };
+
+    // Always compute forecast from the full dataset for a stable regression
+    const pred = computePrediction(prices.dates, prices.close);
+
+    renderPriceChart(fp, fi, _chartType, pred);
+    renderVolumeChart(fp);
+    renderRsiChart(fp.dates, fi.rsi);
+    renderMacdChart(fp.dates, fi);
+  }
+
+  // ── Main analyze flow ──────────────────────────────────────────────────
   async function analyze() {
     const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
     if (!ticker) return;
@@ -415,18 +582,25 @@
     if (e.key === 'Enter') analyze();
   });
 
-  // ── Master render ──────────────────────────────────────────────────────────
+  // ── Master render ───────────────────────────────────────────────────────
   function render(data) {
+    _globalData  = data;
+    _activeRange = '1D';
+    _chartType   = 'candlestick';
+    // Reset button states to defaults
+    document.querySelectorAll('.range-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.range === '1D')
+    );
+    document.querySelectorAll('.type-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.type === 'candlestick')
+    );
     renderCompany(data.ticker, data.company, data.performance || {});
     renderSignal(data.signal);
     renderNews(data.news || []);
-    renderPriceChart(data.prices, data.indicators);
-    renderVolumeChart(data.prices);
-    renderRsiChart(data.prices.dates, data.indicators.rsi);
-    renderMacdChart(data.prices.dates, data.indicators);
+    renderCharts();
   }
 
-  // ── Company panel ──────────────────────────────────────────────────────────
+  // ── Company panel ────────────────────────────────────────────────────
   function renderCompany(ticker, c, perf) {
     document.getElementById('company-name').textContent = c.name || ticker;
     document.getElementById('company-ticker').textContent = ticker;
@@ -484,7 +658,7 @@
     document.getElementById('company-desc').textContent = c.description || '';
   }
 
-  // ── Signal panel ───────────────────────────────────────────────────────────
+  // ── Signal panel ─────────────────────────────────────────────────────
   function renderSignal(sig) {
     const badge = document.getElementById('signal-badge');
     badge.textContent = sig.verdict;
@@ -511,7 +685,7 @@
       </div>`).join('');
   }
 
-  // ── News panel ─────────────────────────────────────────────────────────────
+  // ── News panel ───────────────────────────────────────────────────────
   function renderNews(news) {
     const el = document.getElementById('news-list');
     if (!news || news.length === 0) {
@@ -529,17 +703,31 @@
       </div>`).join('');
   }
 
-  // ── Price chart ────────────────────────────────────────────────────────────
-  function renderPriceChart(prices, ind) {
-    Plotly.react('chart-price', [
-      {
+  // ── Price chart ──────────────────────────────────────────────────────
+  function renderPriceChart(prices, ind, chartType, pred) {
+    const traces = [];
+
+    // Main price trace — candlestick or line
+    if (chartType === 'candlestick') {
+      traces.push({
         type: 'candlestick', name: 'Price',
         x: prices.dates, open: prices.open, high: prices.high,
         low: prices.low, close: prices.close,
         increasing: { line: { color: '#3fb950' }, fillcolor: 'rgba(63,185,80,.4)' },
         decreasing: { line: { color: '#f85149' }, fillcolor: 'rgba(248,81,73,.4)' },
         showlegend: false,
-      },
+      });
+    } else {
+      traces.push({
+        type: 'scatter', mode: 'lines', name: 'Price',
+        x: prices.dates, y: prices.close,
+        line: { color: '#58a6ff', width: 2 },
+        showlegend: false,
+      });
+    }
+
+    // Bollinger Bands + Moving Averages
+    traces.push(
       { type: 'scatter', mode: 'lines', name: 'BB Upper',
         x: prices.dates, y: ind.bb_upper,
         line: { color: '#6e7681', width: 1, dash: 'dot' }, showlegend: false },
@@ -557,14 +745,37 @@
         x: prices.dates, y: ind.sma50, line: { color: '#f0883e', width: 1.5 } },
       { type: 'scatter', mode: 'lines', name: 'EMA 20',
         x: prices.dates, y: ind.ema20, line: { color: '#bc8cff', width: 1.5, dash: 'dash' } },
-    ], {
+    );
+
+    // Price forecast: confidence band + dotted line
+    if (pred) {
+      traces.push(
+        // Lower band — invisible anchor for tonexty fill
+        { type: 'scatter', mode: 'lines',
+          x: pred.dates, y: pred.lower,
+          line: { color: 'rgba(0,0,0,0)', width: 0 },
+          showlegend: false, hoverinfo: 'skip' },
+        // Upper band fills back to lower → shaded confidence region
+        { type: 'scatter', mode: 'lines', name: 'Conf. Band',
+          x: pred.dates, y: pred.upper,
+          fill: 'tonexty', fillcolor: 'rgba(240,136,62,0.13)',
+          line: { color: 'rgba(0,0,0,0)', width: 0 },
+          showlegend: false, hoverinfo: 'skip' },
+        // Forecast centre line — orange dotted, clearly distinct from real price
+        { type: 'scatter', mode: 'lines', name: 'Forecast',
+          x: pred.dates, y: pred.close,
+          line: { color: '#f0883e', width: 2, dash: 'dot' } },
+      );
+    }
+
+    Plotly.react('chart-price', traces, {
       ...DARK, height: 380,
       xaxis: { ...DARK.xaxis, rangeslider: { visible: false } },
       yaxis: { ...DARK.yaxis, tickprefix: '$' },
     }, CFG);
   }
 
-  // ── Volume chart ───────────────────────────────────────────────────────────
+  // ── Volume chart ─────────────────────────────────────────────────────
   function renderVolumeChart(prices) {
     const colors = prices.close.map((c, i) =>
       i === 0 ? '#58a6ff' : (c >= prices.close[i - 1] ? '#3fb950' : '#f85149')
@@ -579,7 +790,7 @@
     }, CFG);
   }
 
-  // ── RSI chart ──────────────────────────────────────────────────────────────
+  // ── RSI chart ───────────────────────────────────────────────────────
   function renderRsiChart(dates, rsi) {
     Plotly.react('chart-rsi', [{
       type: 'scatter', mode: 'lines', name: 'RSI',
@@ -606,7 +817,7 @@
     }, CFG);
   }
 
-  // ── MACD chart ─────────────────────────────────────────────────────────────
+  // ── MACD chart ───────────────────────────────────────────────────────
   function renderMacdChart(dates, ind) {
     const histColors = (ind.macd_hist || []).map(v =>
       v == null ? '#8b949e' : (v >= 0 ? 'rgba(63,185,80,.8)' : 'rgba(248,81,73,.8)')
