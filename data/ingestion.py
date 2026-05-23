@@ -1,7 +1,9 @@
+import os
 import math
 import requests
 import yfinance as yf
 import pandas as pd
+from datetime import datetime, timedelta
 
 
 def _safe(val):
@@ -81,9 +83,6 @@ def _quotesummary_modules(ticker: str) -> dict:
 
 def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
     """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY."""
-    import os
-    from datetime import datetime, timedelta
-
     api_key    = os.environ.get("ALPACA_API_KEY")
     secret_key = os.environ.get("ALPACA_SECRET_KEY")
     if not api_key or not secret_key:
@@ -243,17 +242,37 @@ def fetch_fundamentals(ticker: str) -> dict:
 
 
 def fetch_news(ticker: str) -> list[dict]:
-    """Fetch up to 5 recent news items via yfinance (no API key required)."""
+    """Fetch up to 5 recent news articles from Finnhub (FINNHUB_API_KEY required)."""
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if not api_key:
+        return []
+
     try:
-        items = yf.Ticker(ticker).news or []
+        to_date   = datetime.utcnow()
+        from_date = to_date - timedelta(days=7)
+
+        r = requests.get(
+            "https://finnhub.io/api/v1/company-news",
+            params={
+                "symbol": ticker,
+                "from":   from_date.strftime("%Y-%m-%d"),
+                "to":     to_date.strftime("%Y-%m-%d"),
+                "token":  api_key,
+            },
+            timeout=8,
+        )
+        items = r.json()
+        if not isinstance(items, list):
+            return []
+
         out = []
         for item in items[:5]:
-            ts = item.get("providerPublishTime", 0)
+            ts = item.get("datetime", 0)
             out.append({
-                "title":        item.get("title"),
-                "source":       item.get("publisher"),
+                "title":        item.get("headline"),
+                "source":       item.get("source"),
                 "published_at": pd.Timestamp(ts, unit="s").strftime("%b %d, %Y") if ts else None,
-                "url":          item.get("link"),
+                "url":          item.get("url"),
             })
         return out
     except Exception:
