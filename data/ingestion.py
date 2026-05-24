@@ -86,11 +86,14 @@ def fetch_ohlcv(ticker: str, period: int, interval: str) -> pd.DataFrame:
 
     period   – look-back window in calendar days
     interval – Alpaca timeframe string: '15Min', '1Hour', or '1Day'
+
+    Returns an empty DataFrame on failure; raises EnvironmentError when
+    credentials are not configured so the caller can return a 503.
     """
     api_key    = os.environ.get("ALPACA_API_KEY")
     secret_key = os.environ.get("ALPACA_SECRET_KEY")
     if not api_key or not secret_key:
-        return pd.DataFrame()
+        raise EnvironmentError("ALPACA_API_KEY and ALPACA_SECRET_KEY must be set")
 
     is_intraday = interval != "1Day"
 

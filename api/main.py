@@ -104,11 +104,15 @@ def get_stock(ticker: str, timeframe: str = Query(default="6M")):
                 fresh = False
 
         if not fresh:
-            df = fetch_ohlcv(ticker, period, interval)
+            try:
+                df = fetch_ohlcv(ticker, period, interval)
+            except EnvironmentError as e:
+                raise HTTPException(status_code=503, detail=str(e))
             if df.empty:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"No data found for ticker '{ticker}'. Check the symbol and try again.",
+                    detail=f"No price data returned for '{ticker}' ({timeframe}). "
+                           "Verify the ticker symbol is correct and traded on US markets.",
                 )
 
             fundamentals = fetch_fundamentals(ticker)
