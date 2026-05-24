@@ -91,10 +91,20 @@
     .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
     .chart-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
     .chart-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-    .range-btns { display: flex; gap: 4px; }
+    .range-btns { display: flex; gap: 4px; flex-wrap: wrap; }
     .range-btn { background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); padding: 3px 9px; font-size: 11px; cursor: pointer; transition: all .15s; }
     .range-btn:hover:not(.active) { border-color: var(--blue); color: var(--blue); }
     .range-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .range-btn:disabled { opacity: .4; cursor: not-allowed; }
+    /* Chart-area overlay spinner shown during range re-fetches */
+    .chart-section { position: relative; }
+    #chart-loading-overlay {
+      display: none; position: absolute; inset: 0; z-index: 10;
+      background: rgba(13,17,23,.75); border-radius: 8px;
+      justify-content: center; align-items: center; gap: 10px;
+      color: var(--muted); font-size: 13px;
+    }
+    #chart-loading-overlay.visible { display: flex; }
     .ctrl-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     #chart-type-select { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 3px 8px; font-size: 11px; cursor: pointer; outline: none; }
     #chart-type-select:focus { border-color: var(--accent); }
@@ -281,6 +291,7 @@
 
     <!-- MIDDLE COLUMN: charts + sub-tabs -->
     <div class="chart-section">
+      <div id="chart-loading-overlay"><div class="spin"></div><span id="chart-loading-text">Loading…</span></div>
       <!-- Sub-tabs -->
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;">
         <div class="sub-tabs">
@@ -292,12 +303,13 @@
         <div id="charts-content">
           <div class="chart-controls">
             <div class="range-btns">
-              <button class="range-btn active" data-range="1D" onclick="setRange('1D')">1D</button>
+              <button class="range-btn" data-range="1D" onclick="setRange('1D')">1D</button>
               <button class="range-btn" data-range="1W" onclick="setRange('1W')">1W</button>
               <button class="range-btn" data-range="1M" onclick="setRange('1M')">1M</button>
               <button class="range-btn" data-range="3M" onclick="setRange('3M')">3M</button>
-              <button class="range-btn" data-range="6M" onclick="setRange('6M')">6M</button>
+              <button class="range-btn active" data-range="6M" onclick="setRange('6M')">6M</button>
               <button class="range-btn" data-range="1Y" onclick="setRange('1Y')">1Y</button>
+              <button class="range-btn" data-range="MAX" onclick="setRange('MAX')">MAX</button>
             </div>
             <div class="ctrl-right">
               <select id="chart-type-select" onchange="setChartType(this.value)">
@@ -545,7 +557,7 @@ function switchSubTab(sub) {
 function setRange(range) {
   _activeRange = range;
   document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range===range));
-  if (_globalData) fetchAndRender(_globalData.ticker);
+  if (_globalData) fetchAndRender(_globalData.ticker, /* chartOnly= */ true);
 }
 function setChartType(type) {
   _chartType = type;
@@ -735,34 +747,56 @@ function renderCharts() {
 async function analyze() {
   const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
   if (!ticker) return;
-  // Reset to 6M daily view on a fresh ticker lookup
   _activeRange = '6M';
   _chartType   = 'candlestick';
   document.getElementById('chart-type-select').value = 'candlestick';
   document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range==='6M'));
   switchMainTab('analysis');
-  await fetchAndRender(ticker);
+  await fetchAndRender(ticker, false);
 }
 
-async function fetchAndRender(ticker) {
+// chartOnly=true  → overlay spinner on chart section only, keep company/signal panels intact
+// chartOnly=false → full page spinner (initial ticker load)
+async function fetchAndRender(ticker, chartOnly) {
   hideError();
-  document.getElementById('welcome').style.display = 'none';
-  document.getElementById('content').style.display = 'none';
-  document.getElementById('spinner').style.display = 'flex';
-  document.getElementById('spinner-text').textContent = 'Loading '+_activeRange+' data for '+ticker+'…';
-  document.getElementById('analyze-btn').disabled = true;
+  const overlay = document.getElementById('chart-loading-overlay');
+  const rangeBtns = document.querySelectorAll('.range-btn');
+  if (chartOnly) {
+    document.getElementById('chart-loading-text').textContent = 'Loading '+_activeRange+'…';
+    overlay.classList.add('visible');
+    rangeBtns.forEach(b => { b.disabled = true; });
+  } else {
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('content').style.display = 'none';
+    document.getElementById('spinner').style.display = 'flex';
+    document.getElementById('spinner-text').textContent = 'Loading '+_activeRange+' data for '+ticker+'…';
+    document.getElementById('analyze-btn').disabled = true;
+  }
   try {
     const res = await fetch(API_BASE+'/stock/'+ticker+'?timeframe='+_activeRange);
     if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.detail||'HTTP '+res.status); }
     const data = await res.json();
-    render(data);
-    document.getElementById('content').style.display = 'block';
+    if (chartOnly) {
+      // Only refresh price-dependent panels; leave company/news/signal untouched
+      _globalData = data;
+      document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range===_activeRange));
+      renderCharts();
+      renderKeyLevels(data.prices);
+      renderRiskMetrics(data.prices);
+    } else {
+      render(data);
+      document.getElementById('content').style.display = 'block';
+    }
   } catch(e) {
     showError(e.message||'Failed to fetch data.');
-    document.getElementById('welcome').style.display = 'flex';
+    if (!chartOnly) document.getElementById('welcome').style.display = 'flex';
   } finally {
-    document.getElementById('spinner').style.display = 'none';
-    document.getElementById('analyze-btn').disabled = false;
+    overlay.classList.remove('visible');
+    rangeBtns.forEach(b => { b.disabled = false; });
+    if (!chartOnly) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('analyze-btn').disabled = false;
+    }
   }
 }
 document.getElementById('ticker-input').addEventListener('keydown', e => { if(e.key==='Enter') analyze(); });

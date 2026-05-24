@@ -75,13 +75,24 @@ def _build_signal_from_cache(price_rows, ind_map) -> dict:
     return generate_signals(cached_df)
 
 
-# Intraday timeframes are never cached — data changes minute-by-minute
-_INTRADAY = {"1D", "1W", "1M"}
+# Maps each frontend timeframe key → (look-back days, Alpaca interval string)
+_TIMEFRAME_CONFIG = {
+    "1D":  (5,    "15Min"),
+    "1W":  (10,   "1Hour"),
+    "1M":  (35,   "1Day"),
+    "3M":  (95,   "1Day"),
+    "6M":  (185,  "1Day"),
+    "1Y":  (370,  "1Day"),
+    "MAX": (3650, "1Day"),
+}
+# Sub-day intervals are never written to the DB (schema stores dates, not timestamps)
+_INTRADAY = {"1D", "1W"}
 
 
 @app.get("/stock/{ticker}")
 def get_stock(ticker: str, timeframe: str = Query(default="6M")):
     ticker = ticker.upper().strip()
+    period, interval = _TIMEFRAME_CONFIG.get(timeframe, (185, "1Day"))
     is_intraday = timeframe in _INTRADAY
 
     with get_db() as db:
@@ -93,7 +104,7 @@ def get_stock(ticker: str, timeframe: str = Query(default="6M")):
                 fresh = False
 
         if not fresh:
-            df = fetch_ohlcv(ticker, timeframe)
+            df = fetch_ohlcv(ticker, period, interval)
             if df.empty:
                 raise HTTPException(
                     status_code=404,
@@ -119,9 +130,10 @@ def get_stock(ticker: str, timeframe: str = Query(default="6M")):
 
             dates = [str(d) for d in df["date"].tolist()]
             return {
-                "ticker":      ticker,
+                "ticker":       ticker,
+                "timeframe":    timeframe,
                 "last_updated": datetime.now(timezone.utc).isoformat(),
-                "company":     fundamentals,
+                "company":      fundamentals,
                 "performance": performance,
                 "news":        news,
                 "prices": {
@@ -182,9 +194,10 @@ def get_stock(ticker: str, timeframe: str = Query(default="6M")):
         news        = fetch_news(ticker)   # always fresh — news changes
 
         return {
-            "ticker":      ticker,
+            "ticker":       ticker,
+            "timeframe":    timeframe,
             "last_updated": datetime.now(timezone.utc).isoformat(),
-            "company":     company,
+            "company":      company,
             "performance": performance,
             "news":        news,
             "prices": {

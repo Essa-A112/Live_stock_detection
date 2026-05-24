@@ -81,41 +81,29 @@ def _quotesummary_modules(ticker: str) -> dict:
         return {}
 
 
-# Maps frontend timeframe key → (Alpaca timeframe string, look-back days)
-_TIMEFRAME_MAP = {
-    "1D": ("5Min",  2),
-    "1W": ("1Hour", 7),
-    "1M": ("1Hour", 30),
-    "3M": ("1Day",  90),
-    "6M": ("1Day",  180),
-    "1Y": ("1Day",  365),
-}
-
-
-def fetch_ohlcv(ticker: str, timeframe: str = "6M") -> pd.DataFrame:
+def fetch_ohlcv(ticker: str, period: int, interval: str) -> pd.DataFrame:
     """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY.
 
-    timeframe must be one of: 1D, 1W, 1M, 3M, 6M, 1Y.
-    Intraday timeframes (1D/1W/1M) return sub-day bars; others return daily bars.
+    period   – look-back window in calendar days
+    interval – Alpaca timeframe string: '15Min', '1Hour', or '1Day'
     """
     api_key    = os.environ.get("ALPACA_API_KEY")
     secret_key = os.environ.get("ALPACA_SECRET_KEY")
     if not api_key or not secret_key:
         return pd.DataFrame()
 
-    alpaca_tf, days = _TIMEFRAME_MAP.get(timeframe, ("1Day", 180))
-    is_intraday = alpaca_tf != "1Day"
+    is_intraday = interval != "1Day"
 
     try:
         end   = datetime.utcnow()
-        start = end - timedelta(days=days)
+        start = end - timedelta(days=period)
 
         all_bars = []
         page_token = None
 
         while True:
             params = {
-                "timeframe":  alpaca_tf,
+                "timeframe":  interval,
                 "start":      start.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "end":        end.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "adjustment": "all",
