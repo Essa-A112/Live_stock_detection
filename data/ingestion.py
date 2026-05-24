@@ -81,25 +81,43 @@ def _quotesummary_modules(ticker: str) -> dict:
         return {}
 
 
-def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
-    """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY."""
+# Maps frontend timeframe key → (Alpaca timeframe string, look-back days)
+_TIMEFRAME_MAP = {
+    "1D": ("5Min",  2),
+    "1W": ("1Hour", 7),
+    "1M": ("1Hour", 30),
+    "3M": ("1Day",  90),
+    "6M": ("1Day",  180),
+    "1Y": ("1Day",  365),
+}
+
+
+def fetch_ohlcv(ticker: str, timeframe: str = "6M") -> pd.DataFrame:
+    """Download OHLCV from Alpaca Markets API using ALPACA_API_KEY / ALPACA_SECRET_KEY.
+
+    timeframe must be one of: 1D, 1W, 1M, 3M, 6M, 1Y.
+    Intraday timeframes (1D/1W/1M) return sub-day bars; others return daily bars.
+    """
     api_key    = os.environ.get("ALPACA_API_KEY")
     secret_key = os.environ.get("ALPACA_SECRET_KEY")
     if not api_key or not secret_key:
         return pd.DataFrame()
 
+    alpaca_tf, days = _TIMEFRAME_MAP.get(timeframe, ("1Day", 180))
+    is_intraday = alpaca_tf != "1Day"
+
     try:
         end   = datetime.utcnow()
-        start = end - timedelta(days=180)
+        start = end - timedelta(days=days)
 
         all_bars = []
         page_token = None
 
         while True:
             params = {
-                "timeframe":  "1Day",
-                "start":      start.strftime("%Y-%m-%dT00:00:00Z"),
-                "end":        end.strftime("%Y-%m-%dT00:00:00Z"),
+                "timeframe":  alpaca_tf,
+                "start":      start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end":        end.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "adjustment": "all",
                 "limit":      1000,
             }
@@ -129,7 +147,13 @@ def fetch_ohlcv(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.Da
             "t": "date", "o": "open", "h": "high",
             "l": "low",  "c": "close", "v": "volume",
         })[["date", "open", "high", "low", "close", "volume"]]
-        df["date"] = pd.to_datetime(df["date"]).dt.date
+
+        if is_intraday:
+            # Keep full timestamp (UTC) so Plotly renders a proper time axis
+            df["date"] = pd.to_datetime(df["date"], utc=True).dt.strftime("%Y-%m-%d %H:%M")
+        else:
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+
         return df.sort_values("date").reset_index(drop=True)
 
     except Exception:

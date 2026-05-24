@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from database.db import (
@@ -75,19 +75,25 @@ def _build_signal_from_cache(price_rows, ind_map) -> dict:
     return generate_signals(cached_df)
 
 
+# Intraday timeframes are never cached — data changes minute-by-minute
+_INTRADAY = {"1D", "1W", "1M"}
+
+
 @app.get("/stock/{ticker}")
-def get_stock(ticker: str):
+def get_stock(ticker: str, timeframe: str = Query(default="6M")):
     ticker = ticker.upper().strip()
+    is_intraday = timeframe in _INTRADAY
 
     with get_db() as db:
-        fresh = is_cache_fresh(ticker, db)
+        # Skip cache entirely for intraday timeframes
+        fresh = False if is_intraday else is_cache_fresh(ticker, db)
         if fresh:
             price_rows = get_cached_prices(ticker, db)
             if not price_rows:
                 fresh = False
 
         if not fresh:
-            df = fetch_ohlcv(ticker)
+            df = fetch_ohlcv(ticker, timeframe)
             if df.empty:
                 raise HTTPException(
                     status_code=404,
@@ -100,14 +106,16 @@ def get_stock(ticker: str):
             signal       = generate_signals(df)
             performance  = compute_performance(df["close"].tolist())
 
-            price_dicts = df[["date", "open", "high", "low", "close", "volume"]].to_dict("records")
-            upsert_prices(ticker, price_dicts, db)
-            upsert_company(ticker, fundamentals, db)
+            # Only persist daily-bar data — intraday is too granular for the DB schema
+            if not is_intraday:
+                price_dicts = df[["date", "open", "high", "low", "close", "volume"]].to_dict("records")
+                upsert_prices(ticker, price_dicts, db)
+                upsert_company(ticker, fundamentals, db)
 
-            ind_cols = ["date", "rsi", "macd", "macd_signal", "macd_hist",
-                        "bb_upper", "bb_middle", "bb_lower", "sma20", "sma50", "ema20", "volatility"]
-            ind_dicts = df[[c for c in ind_cols if c in df.columns]].to_dict("records")
-            upsert_indicators(ticker, ind_dicts, db)
+                ind_cols = ["date", "rsi", "macd", "macd_signal", "macd_hist",
+                            "bb_upper", "bb_middle", "bb_lower", "sma20", "sma50", "ema20", "volatility"]
+                ind_dicts = df[[c for c in ind_cols if c in df.columns]].to_dict("records")
+                upsert_indicators(ticker, ind_dicts, db)
 
             dates = [str(d) for d in df["date"].tolist()]
             return {

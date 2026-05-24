@@ -446,7 +446,7 @@
 const API_BASE = 'https://live-stock-detection.onrender.com';
 
 let _globalData   = null;
-let _activeRange  = '1D';
+let _activeRange  = '6M';
 let _chartType    = 'candlestick';
 let _showForecast = false;
 let _scannerData  = [];
@@ -545,7 +545,7 @@ function switchSubTab(sub) {
 function setRange(range) {
   _activeRange = range;
   document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range===range));
-  renderCharts();
+  if (_globalData) fetchAndRender(_globalData.ticker);
 }
 function setChartType(type) {
   _chartType = type;
@@ -703,31 +703,10 @@ function computePrediction(dates, closes) {
 // ── Master chart renderer ────────────────────────────────────────────────────
 function renderCharts() {
   if (!_globalData) return;
-  const prices = _globalData.prices;
-  const indicators = getIndicators();
-  const idx = getFilteredIndices(prices.dates, _activeRange);
-  if (!idx.length) return;
-  const fp = {
-    dates:  byIdx(prices.dates,  idx),
-    open:   byIdx(prices.open,   idx),
-    high:   byIdx(prices.high,   idx),
-    low:    byIdx(prices.low,    idx),
-    close:  byIdx(prices.close,  idx),
-    volume: byIdx(prices.volume, idx),
-  };
-  const fi = {
-    rsi:         byIdx(indicators.rsi,         idx),
-    macd:        byIdx(indicators.macd,        idx),
-    macd_signal: byIdx(indicators.macd_signal, idx),
-    macd_hist:   byIdx(indicators.macd_hist,   idx),
-    bb_upper:    byIdx(indicators.bb_upper,    idx),
-    bb_middle:   byIdx(indicators.bb_middle,   idx),
-    bb_lower:    byIdx(indicators.bb_lower,    idx),
-    sma20:       byIdx(indicators.sma20,       idx),
-    sma50:       byIdx(indicators.sma50,       idx),
-    ema20:       byIdx(indicators.ema20,       idx),
-  };
-  const pred = computePrediction(prices.dates, prices.close);
+  const fp = _globalData.prices;
+  const fi = getIndicators();
+  if (!fi || !fp.dates.length) return;
+  const pred = _showForecast ? computePrediction(fp.dates, fp.close) : null;
   renderPriceChart(fp, fi, _chartType, pred);
   // Volume
   if (_settings.showVolume) {
@@ -752,19 +731,28 @@ function renderCharts() {
   }
 }
 
-// ── Analyze ──────────────────────────────────────────────────────────────────
+// ── Analyze / fetchAndRender ──────────────────────────────────────────────────
 async function analyze() {
   const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
   if (!ticker) return;
-  hideError();
+  // Reset to 6M daily view on a fresh ticker lookup
+  _activeRange = '6M';
+  _chartType   = 'candlestick';
+  document.getElementById('chart-type-select').value = 'candlestick';
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range==='6M'));
   switchMainTab('analysis');
+  await fetchAndRender(ticker);
+}
+
+async function fetchAndRender(ticker) {
+  hideError();
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('content').style.display = 'none';
   document.getElementById('spinner').style.display = 'flex';
-  document.getElementById('spinner-text').textContent = 'Fetching '+ticker+'…';
+  document.getElementById('spinner-text').textContent = 'Loading '+_activeRange+' data for '+ticker+'…';
   document.getElementById('analyze-btn').disabled = true;
   try {
-    const res = await fetch(API_BASE+'/stock/'+ticker);
+    const res = await fetch(API_BASE+'/stock/'+ticker+'?timeframe='+_activeRange);
     if (!res.ok) { const err=await res.json().catch(()=>({})); throw new Error(err.detail||'HTTP '+res.status); }
     const data = await res.json();
     render(data);
@@ -781,11 +769,9 @@ document.getElementById('ticker-input').addEventListener('keydown', e => { if(e.
 
 // ── Master render ─────────────────────────────────────────────────────────────
 function render(data) {
-  _globalData  = data;
-  _activeRange = '1D';
-  _chartType   = 'candlestick';
-  document.getElementById('chart-type-select').value = 'candlestick';
-  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range==='1D'));
+  _globalData = data;
+  // Sync range buttons to current _activeRange (set by analyze() or setRange())
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range===_activeRange));
   renderCompany(data.ticker, data.company, data.performance||{});
   renderSignal(data.signal);
   renderNews(data.news||[]);
