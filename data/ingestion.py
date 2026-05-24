@@ -97,39 +97,45 @@ def fetch_ohlcv(ticker: str, period: int, interval: str) -> pd.DataFrame:
 
     is_intraday = interval != "1Day"
 
-    try:
+    headers = {
+        "APCA-API-KEY-ID":     api_key,
+        "APCA-API-SECRET-KEY": secret_key,
+    }
+    url = f"https://data.alpaca.markets/v2/stocks/{ticker}/bars"
+
+    def _fetch_bars(feed: str) -> list:
+        """Paginate through Alpaca bars for the given feed ('sip' or 'iex')."""
         end   = datetime.utcnow()
         start = end - timedelta(days=period)
-
-        all_bars = []
-        page_token = None
-
+        bars, page_token = [], None
         while True:
             params = {
                 "timeframe":  interval,
                 "start":      start.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "end":        end.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "adjustment": "all",
+                "feed":       feed,
                 "limit":      1000,
             }
             if page_token:
                 params["page_token"] = page_token
-
-            r = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{ticker}/bars",
-                headers={
-                    "APCA-API-KEY-ID":     api_key,
-                    "APCA-API-SECRET-KEY": secret_key,
-                },
-                params=params,
-                timeout=15,
-            )
-            data = r.json()
-            bars = data.get("bars") or []
-            all_bars.extend(bars)
-            page_token = data.get("next_page_token")
+            r = requests.get(url, headers=headers, params=params, timeout=15)
+            payload = r.json()
+            # Surface Alpaca error messages so they don't silently return empty
+            if r.status_code != 200:
+                raise ValueError(payload.get("message") or f"Alpaca HTTP {r.status_code}")
+            bars.extend(payload.get("bars") or [])
+            page_token = payload.get("next_page_token")
             if not page_token:
                 break
+        return bars
+
+    try:
+        # Try SIP feed first (paid plans); fall back to IEX (free tier)
+        try:
+            all_bars = _fetch_bars("sip")
+        except ValueError:
+            all_bars = _fetch_bars("iex")
 
         if not all_bars:
             return pd.DataFrame()
@@ -140,7 +146,6 @@ def fetch_ohlcv(ticker: str, period: int, interval: str) -> pd.DataFrame:
         })[["date", "open", "high", "low", "close", "volume"]]
 
         if is_intraday:
-            # Keep full timestamp (UTC) so Plotly renders a proper time axis
             df["date"] = pd.to_datetime(df["date"], utc=True).dt.strftime("%Y-%m-%d %H:%M")
         else:
             df["date"] = pd.to_datetime(df["date"]).dt.date
