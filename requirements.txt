@@ -4,4 +4,4 @@ yfinance==0.2.66
 pandas==2.2.2
 numpy==1.26.4
 sqlalchemy==2.0.31
-python-multipart==0.0.9
+python-multipart==0.0.31
